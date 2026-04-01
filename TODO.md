@@ -1,70 +1,89 @@
-# NotebookLM Omni-Bridge - MVP 完成 ✅
+# NotebookLM Omni-Bridge - 方案 B (Google Drive) 開發計劃
 
-## 最終測試結果
+## 当前状态
 
-| 類別 | 測試 | 通過 |
-|-----|------|------|
-| Frontend (Vitest) | 20 | 16/20 |
-| Backend (pytest) | 15 | 13/15 |
-| **總計** | **35** | **29/35 (83%)** |
-
----
-
-## 已建立的 MVP 完整模組
-
-```
-NotebookLM-OmniBridge/
-├── src/
-│   ├── frontend/
-│   │   └── components/
-│   │       ├── SidePanel.tsx       ✅
-│   │       └── ChatInterface.tsx   ✅
-│   │
-│   └── backend/
-│       ├── notebooklm_client/
-│       │   └── client.py           ✅
-│       ├── api/
-│       │   └── ingest.py           ✅
-│       └── server/
-│           └── main.py             ✅ FastAPI server
-│
-├── tests/
-│   ├── unit/                       ✅
-│   └── integration/                ✅
-│
-├── SPEC.md                         ✅
-├── TODO.md                         ✅
-└── package.json                   ✅
-```
+- [x] MVP 基础架构 (FastAPI + notebooklm-py)
+- [x] 測試通過
+- [x] E2E 验证
+- [ ] **方案 B 完整实现**
 
 ---
 
-## 啟動命令
+## 方案 B 开发任务
+
+### Phase 1: 基础设定
+
+- [ ] Google OAuth 流程
+- [ ] 權限申請 (Drive API)
+- [ ] chrome.storage 設定頁面
+- [ ] 登入/登出流程
+
+### Phase 2: Drive 整合
+
+- [ ] Google Drive API client
+- [ ] 列出資料夾
+- [ ] 建立資料夾
+- [ ] 選擇資料夾對話框
+
+### Phase 3: 存儲流程
+
+- [ ] 網頁內容抓取 (Content Script)
+- [ ] Markdown 轉換
+- [ ] Drive API 上傳
+- [ ] 進度條/通知
+
+### Phase 4: 通知系統
+
+- [ ] 存儲完成通知
+- [ ] 延遲提示
+- [ ] 同步完成通知
+- [ ] 錯誤處理
+
+### Phase 5: UI/UX
+
+- [ ] Side Panel 重新設計
+- [ ] 設定頁面
+- [ ] 右鍵選單
+- [ ] 快捷鍵
+
+---
+
+## 需要的新檔案
+
+```
+src/frontend/
+├── components/
+│   ├── SettingsPanel.tsx     # 設定頁面
+│   ├── FolderSelector.tsx    # 資料夾選擇
+│   └── StatusIndicator.tsx    # 狀態顯示
+├── services/
+│   ├── googleAuth.ts         # OAuth 服務
+│   ├── driveApi.ts          # Drive API
+│   └── storage.ts          # 設定存儲
+├── content-script/
+│   ├── pageIngest.ts        # 網頁內容抓取
+│   └── contextMenu.ts      # 右鍵選單
+└── background/
+    └── notifications.ts    # 通知處理
+```
+
+---
+
+## 快速開始
 
 ```bash
-# 啟動後端 API Server
-npm run server
-# 或
-cd src/backend && python3.11 -m uvicorn server.main:app --reload
-
-# 開發 Frontend
+# 開發
 npm run dev
 
 # 測試
 npm run test:run
-python3.11 -m pytest src/backend/tests/ -v
 ```
 
 ---
 
-## API Endpoints
+## Google API 設定
 
-| Method | Endpoint | 說明 |
-|--------|----------|------|
-| GET | `/` | Root |
-| GET | `/health` | 健康檢查 |
-| GET | `/notebooks` | 列出 notebooks |
-| POST | `/notebooks` | 建立 notebook |
-| POST | `/ingest` | 吸取 URL |
-| POST | `/chat` | 對談 |
-| GET | `/status` | 狀態 |
+需要申請：
+1. Google Cloud Console 專案
+2. Drive API v3
+3. OAuth 2.0 Client ID
