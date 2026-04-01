@@ -1,0 +1,6 @@
+notebooklm-py
+fastapi
+uvicorn
+httpx
+pytest
+pytest-asyncio

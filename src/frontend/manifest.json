@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "NotebookLM Omni-Bridge",
+  "version": "0.1.0",
+  "description": "Chrome Extension to bridge NotebookLM with your browsing",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "side_panel": {
+    "default_path": "side-panel/index.html"
+  },
+  "action": {
+    "default_side_panel": "side-panel/index.html"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}
