@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "NotebookLM Omni-Bridge",
   "version": "0.1.0",
-  "description": "将网页内容传送到 NotebookLM 的 Chrome 扩展",
+  "description": "將網頁內容傳送到 NotebookLM 的 Chrome 擴充功能",
   "permissions": [
     "storage",
     "identity",
@@ -11,7 +11,7 @@
     "notifications"
   ],
   "oauth2": {
-    "client_id": "Extension-provided",
+    "client_id": "577927281402-7u9m12099vcg0s904ra8n6gbhvct5061.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/drive.metadata.readonly"
