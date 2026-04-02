@@ -2,20 +2,29 @@
   "manifest_version": 3,
   "name": "NotebookLM Omni-Bridge",
   "version": "0.1.0",
-  "description": "Chrome Extension to bridge NotebookLM with your browsing",
+  "description": "将网页内容传送到 NotebookLM 的 Chrome 扩展",
   "permissions": [
-    "sidePanel",
     "storage",
+    "identity",
     "activeTab",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
-  "side_panel": {
-    "default_path": "side-panel/index.html"
-  },
-  "action": {
-    "default_side_panel": "side-panel/index.html"
+  "oauth2": {
+    "client_id": "Extension-provided",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/drive.metadata.readonly"
+    ]
   },
   "host_permissions": [
     "<all_urls>"
-  ]
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_side_panel": "side-panel.html"
+  },
+  "side_panel": {
+    "default_path": "side-panel.html"
+  }
 }
