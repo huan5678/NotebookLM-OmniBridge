@@ -1,89 +1,66 @@
-# NotebookLM Omni-Bridge - 方案 B (Google Drive) 開發計劃
+# NotebookLM Omni-Bridge - 方案 C (精簡一鍵設定)
 
-## 当前状态
-
-- [x] MVP 基础架构 (FastAPI + notebooklm-py)
-- [x] 測試通過
-- [x] E2E 验证
-- [ ] **方案 B 完整实现**
+## 目標
+讓非工程人員也能輕鬆使用，一鍵 Google 登入 + 自動化
 
 ---
 
-## 方案 B 开发任务
+## 當前狀態
 
-### Phase 1: 基础设定
+- [x] MVP 基礎架構 (FastAPI + notebooklm-py)
+- [x] 方案選擇：方案 C（精簡化方案 B）
+- [ ] **Phase 1: OAuth + 基本設定**
 
-- [ ] Google OAuth 流程
-- [ ] 權限申請 (Drive API)
+---
+
+## 開發任務
+
+### Phase 1: Google OAuth + 基本設定 🔴
+
+- [ ] Google OAuth 設定精靈（一鍵登入）
+- [ ] 權限申請 (Drive API, OAuth)
+- [ ] 自動化建立 Drive 資料夾
 - [ ] chrome.storage 設定頁面
-- [ ] 登入/登出流程
+- [ ] 登入/登出狀態顯示
 
-### Phase 2: Drive 整合
+### Phase 2: Drive 整合 🟡
 
 - [ ] Google Drive API client
-- [ ] 列出資料夾
-- [ ] 建立資料夾
+- [ ] 列出使用者資料夾
+- [ ] 建立新資料夾
 - [ ] 選擇資料夾對話框
 
-### Phase 3: 存儲流程
+### Phase 3: 存儲流程 🟡
 
 - [ ] 網頁內容抓取 (Content Script)
 - [ ] Markdown 轉換
 - [ ] Drive API 上傳
-- [ ] 進度條/通知
+- [ ] 進度通知
 
-### Phase 4: 通知系統
+### Phase 4: 通知系統 🟢
 
 - [ ] 存儲完成通知
-- [ ] 延遲提示
+- [ ] 延遲提示 ("等待同步中...")
 - [ ] 同步完成通知
-- [ ] 錯誤處理
 
-### Phase 5: UI/UX
+### Phase 5: UI/UX 🟢
 
-- [ ] Side Panel 重新設計
+- [ ] 重設計 Side Panel
 - [ ] 設定頁面
 - [ ] 右鍵選單
-- [ ] 快捷鍵
 
 ---
 
-## 需要的新檔案
+## 使用者流程（目標：30秒內完成設定）
 
 ```
-src/frontend/
-├── components/
-│   ├── SettingsPanel.tsx     # 設定頁面
-│   ├── FolderSelector.tsx    # 資料夾選擇
-│   └── StatusIndicator.tsx    # 狀態顯示
-├── services/
-│   ├── googleAuth.ts         # OAuth 服務
-│   ├── driveApi.ts          # Drive API
-│   └── storage.ts          # 設定存儲
-├── content-script/
-│   ├── pageIngest.ts        # 網頁內容抓取
-│   └── contextMenu.ts      # 右鍵選單
-└── background/
-    └── notifications.ts    # 通知處理
+1. 安裝 Extension
+2. 點擊「登入 Google」→ 選擇帳號 → 允許
+3. 完成！開始使用
 ```
 
 ---
 
-## 快速開始
+## 下一步
 
-```bash
-# 開發
-npm run dev
-
-# 測試
-npm run test:run
-```
-
----
-
-## Google API 設定
-
-需要申請：
-1. Google Cloud Console 專案
-2. Drive API v3
-3. OAuth 2.0 Client ID
+開始 Phase 1：建立 Google OAuth 流程
