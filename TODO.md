@@ -1,66 +1,32 @@
 # NotebookLM Omni-Bridge - 方案 C (精簡一鍵設定)
 
-## 目標
-讓非工程人員也能輕鬆使用，一鍵 Google 登入 + 自動化
-
----
-
 ## 當前狀態
 
-- [x] MVP 基礎架構 (FastAPI + notebooklm-py)
-- [x] 方案選擇：方案 C（精簡化方案 B）
-- [ ] **Phase 1: OAuth + 基本設定**
+- [x] Google Drive API 已啟用 ✅
+- [x] notebooklm 已登入（重用credentials）
+- [x] Phase 1: OAuth 服務建立
+- [ ] **Phase 1: 與 notebooklm 整合**
 
 ---
 
-## 開發任務
+## OAuth 選項
 
-### Phase 1: Google OAuth + 基本設定 🔴
-
-- [ ] Google OAuth 設定精靈（一鍵登入）
-- [ ] 權限申請 (Drive API, OAuth)
-- [ ] 自動化建立 Drive 資料夾
-- [ ] chrome.storage 設定頁面
-- [ ] 登入/登出狀態顯示
-
-### Phase 2: Drive 整合 🟡
-
-- [ ] Google Drive API client
-- [ ] 列出使用者資料夾
-- [ ] 建立新資料夾
-- [ ] 選擇資料夾對話框
-
-### Phase 3: 存儲流程 🟡
-
-- [ ] 網頁內容抓取 (Content Script)
-- [ ] Markdown 轉換
-- [ ] Drive API 上傳
-- [ ] 進度通知
-
-### Phase 4: 通知系統 🟢
-
-- [ ] 存儲完成通知
-- [ ] 延遲提示 ("等待同步中...")
-- [ ] 同步完成通知
-
-### Phase 5: UI/UX 🟢
-
-- [ ] 重設計 Side Panel
-- [ ] 設定頁面
-- [ ] 右鍵選單
+| 選項 | 說明 | 狀態 |
+|------|------|------|
+| **A** | 重用 notebooklm credentials | ✅ 可行 |
+| **B** | Chrome Identity API | 需要 Web Store 發布 |
+| **C** | 建立 OAuth Client ID | 需要手動設定 |
 
 ---
 
-## 使用者流程（目標：30秒內完成設定）
+## 下一步：重用 notebooklm 登入
 
-```
-1. 安裝 Extension
-2. 點擊「登入 Google」→ 選擇帳號 → 允許
-3. 完成！開始使用
-```
+優勢：
+- 使用者已經登入 notebooklm
+- 不需要額外 OAuth 設定
+- 直接使用 NotebookLM API
 
----
-
-## 下一步
-
-開始 Phase 1：建立 Google OAuth 流程
+流程：
+1. 讀取 notebooklm 的 storage_state.json
+2. 用這些 cookies 存取 NotebookLM API
+3. 提供設定精靈讓使用者選擇 Notebook
