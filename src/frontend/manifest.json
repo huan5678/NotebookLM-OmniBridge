@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "NotebookLM Omni-Bridge",
   "version": "0.1.0",
-  "description": "將網頁內容傳送到 NotebookLM 的 Chrome 擴充功能",
+  "description": "將網頁內容傳送到 NotebookLM",
   "permissions": [
     "storage",
     "identity",
@@ -20,9 +20,11 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "background": {
+    "service_worker": "background/index.js"
+  },
   "action": {
-    "default_popup": "popup.html",
-    "default_side_panel": "side-panel.html"
+    "default_popup": "popup.html"
   },
   "side_panel": {
     "default_path": "side-panel.html"
