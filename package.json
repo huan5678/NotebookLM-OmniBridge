@@ -1,25 +1,21 @@
 {
   "name": "notebooklm-omnibridge",
-  "version": "0.1.0",
-  "description": "Chrome Extension to bridge NotebookLM with your browsing",
-  "type": "module",
+  "version": "2.0.0",
+  "private": true,
+  "workspaces": [
+    "extension",
+    "mcp-server",
+    "core"
+  ],
   "scripts": {
-    "dev": "cd src/frontend && plasmo dev",
-    "build": "cd src/frontend && plasmo build",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "backend:test": "cd src/backend && python3.11 -m pytest tests/ -v",
-    "server": "cd src/backend && python3.11 -m uvicorn server.main:app --reload",
-    "server:start": "cd src/backend && python3.11 -m server.main",
-    "typecheck": "tsc --noEmit"
+    "dev": "npm run dev -w extension",
+    "build": "npm run build -w extension",
+    "typecheck": "npm run typecheck -w extension",
+    "mcp": "npm run start -w mcp-server"
   },
   "devDependencies": {
-    "@testing-library/react": "^14.0.0",
-    "@types/react": "^18.2.0",
-    "@vitejs/plugin-react": "^4.2.0",
-    "jsdom": "^24.0.0",
-    "typescript": "^5.3.0",
-    "vitest": "^1.4.0"
+    "@types/chrome": "^0.0.270",
+    "@types/node": "^20.19.39",
+    "typescript": "^5.3.0"
   }
 }

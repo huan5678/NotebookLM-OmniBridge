@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Python
 __pycache__/
@@ -20,6 +19,12 @@ Thumbs.db
 # Build
 dist/
 build/
+*.js.map
+*.d.ts.map
+
+# Plasmo
+.plasmo/
+*.plasmo.png
 
 # Logs
 *.log

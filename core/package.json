@@ -1,0 +1,17 @@
+{
+  "name": "@nac/core",
+  "version": "2.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "googleapis": "^126.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
