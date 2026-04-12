@@ -26,7 +26,9 @@
       "storage",
       "activeTab",
       "scripting",
-      "sidePanel"
+      "sidePanel",
+      "contextMenus",
+      "notifications"
     ],
     "host_permissions": [
       "<all_urls>"

@@ -6,48 +6,21 @@
 - [x] Phase 2: Plasmo + React Extension (元件化 UI、Background、Content Script)
 - [x] Phase 3: FastAPI 後端整合 (CORS、select endpoint、text ingestion)
 - [x] Phase 4: 功能補完 (Settings 頁面、連線偵測、text ingestion 前端串接)
+- [x] P0: 驗證 notebooklm-py CLI 指令格式 — 已對照確認一致
+- [x] P0: 修正 `_run_cli` 為真正 async — 改用 `asyncio.create_subprocess_exec`
+- [x] P0: Login / Auth 引導流程 — `/status` 偵測 auth、Extension 顯示引導 banner
+- [x] P1: 右鍵選單 (Context Menu) — 選取文字/頁面 → 右鍵 → 傳送至 NotebookLM
+- [x] P1: Notebook 建立 — NotebookSelector 加入「+」建立新 Notebook
+- [x] P1: Chrome Notifications — 右鍵攝入成功後顯示通知
+- [x] P1: 清理過時測試 — 刪除 3 個 stale frontend tests，更新 backend tests (10/10 通過)
 
 ---
 
-## P0 — 必須先通 (端對端可用)
-
-- [ ] **驗證 notebooklm-py CLI 指令格式**
-  - 安裝 notebooklm-py，確認 `list --json`, `use`, `source add`, `ask` 等指令實際輸出
-  - 對照 `backend/notebooklm_client/client.py` 的解析邏輯，修正不一致
-
-- [ ] **修正 `_run_cli` 為真正 async**
-  - `client.py` 目前用 `subprocess.run` (同步) 包在 async 裡，會 block event loop
-  - 改為 `asyncio.create_subprocess_exec`
-
-- [ ] **Login / Auth 引導流程**
-  - 使用者首次使用需跑 `notebooklm login` 做 OAuth
-  - 後端需偵測未登入狀態，回傳明確提示
-  - Extension 顯示引導訊息
+## P0 — 端對端實測
 
 - [ ] **端對端實測**
-  - 完整走通：Extension 吸取頁面 → FastAPI → notebooklm-py → NotebookLM
-  - 確認 list notebooks → select → ingest → chat 全流程
-
----
-
-## P1 — 核心體驗
-
-- [ ] **右鍵選單 (Context Menu)**
-  - 選取文字 → 右鍵 → 「傳送至 NotebookLM」
-  - 需在 background 註冊 `chrome.contextMenus`
-
-- [ ] **Notebook 建立**
-  - Extension 內可建立新 Notebook (目前只能選擇已有的)
-  - FastAPI `POST /notebooks` 已有，前端需加入 UI
-
-- [ ] **Chrome Notifications**
-  - 攝入完成通知
-  - 錯誤通知
-  - 需加入 `notifications` permission
-
-- [ ] **清理過時測試**
-  - `tests/` 目錄的 .test.ts 檔案參照舊架構，需重寫或刪除
-  - `backend/tests/` 需對照新 API 格式更新
+  - 啟動 FastAPI → 載入 Extension → 實際走通全流程
+  - list notebooks → select → 吸取頁面 → ingest → chat
 
 ---
 
@@ -75,18 +48,10 @@
 
 ```
 Chrome Extension (Plasmo + React)
-  ↕ HTTP fetch (可配置 URL)
-Python FastAPI Backend (預設 port 8000)
-  ↕ subprocess (async)
+  ↕ HTTP fetch (可配置 URL, 預設 localhost:8000)
+Python FastAPI Backend
+  ↕ asyncio.create_subprocess_exec
 notebooklm-py CLI
   ↕ Google APIs
 NotebookLM
 ```
-
-### 關鍵檔案
-- Extension 入口: `extension/sidepanel.tsx`, `extension/popup.tsx`, `extension/options.tsx`
-- Background: `extension/background/index.ts`
-- React 元件: `extension/components/SidePanel.tsx`, `ChatTab.tsx`, `IngestTab.tsx`
-- FastAPI: `backend/server/main.py`
-- Client: `backend/notebooklm_client/client.py`
-- MCP Server: `mcp-server/src/index.ts`

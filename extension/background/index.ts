@@ -11,11 +11,13 @@ interface InboundMessage {
     | "ABSORB_PAGE"
     | "NOTEBOOKLM_LIST"
     | "NOTEBOOKLM_SELECT"
+    | "NOTEBOOKLM_CREATE"
     | "NOTEBOOKLM_CHAT"
     | "NOTEBOOKLM_INGEST"
     | "NOTEBOOKLM_STATUS"
     | "OPEN_SIDE_PANEL"
   notebookId?: string
+  name?: string
   message?: string
   url?: string
   text?: string
@@ -131,6 +133,12 @@ chrome.runtime.onMessage.addListener(
             break
           }
 
+          case "NOTEBOOKLM_CREATE": {
+            const data = await apiPost(`/notebooks?name=${encodeURIComponent(msg.name!)}`)
+            sendResponse({ success: true, data })
+            break
+          }
+
           case "NOTEBOOKLM_CHAT": {
             const data = await apiPost("/chat", {
               message: msg.message,
@@ -169,5 +177,55 @@ chrome.runtime.onMessage.addListener(
     return true
   }
 )
+
+// Context menu — right-click "Send to NotebookLM"
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "send-to-notebooklm",
+    title: "傳送至 NotebookLM",
+    contexts: ["selection", "page"],
+  })
+})
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== "send-to-notebooklm" || !tab?.id) return
+
+  try {
+    // Get selected text or page content
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const sel = window.getSelection()?.toString().trim()
+        return {
+          text: sel || document.body.innerText.slice(0, 50000),
+          title: document.title,
+          url: window.location.href,
+        }
+      },
+    })
+
+    const { text, title, url } = result.result as { text: string; title: string; url: string }
+
+    // Send to backend
+    const base = await getApiUrl()
+    const resp = await fetch(`${base}/ingest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, title, url }),
+    })
+
+    if (resp.ok) {
+      // Show success notification if permission available
+      chrome.notifications?.create({
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icon128.plasmo.png"),
+        title: "NotebookLM Omni-Bridge",
+        message: `已傳送「${title}」`,
+      })
+    }
+  } catch (err) {
+    console.error(TAG, "Context menu ingest failed:", err)
+  }
+})
 
 console.log(TAG, "NotebookLM Omni-Bridge background loaded")

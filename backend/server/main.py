@@ -9,7 +9,6 @@ from typing import Optional
 import os
 import sys
 import hashlib
-import tempfile
 
 # Add parent to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -142,24 +141,16 @@ async def ingest(request: IngestRequest):
                 return IngestResponse(success=False, error="Failed to add source")
 
         elif request.text:
-            # Text ingestion — write to temp file, then add as source
+            # Text ingestion — notebooklm-py natively supports inline text
             title = request.title or "Untitled"
-            with tempfile.NamedTemporaryFile(
-                mode='w', suffix='.md', prefix=f'nac_{title}_', delete=False
-            ) as f:
-                f.write(f"# {title}\n\n{request.text}")
-                temp_path = f.name
-            try:
-                success = await nlm_client.add_source(temp_path)
-                if success:
-                    return IngestResponse(
-                        success=True,
-                        source_id=generate_source_id(temp_path)
-                    )
-                else:
-                    return IngestResponse(success=False, error="Failed to add text source")
-            finally:
-                os.unlink(temp_path)
+            success = await nlm_client.add_source(request.text, title=title)
+            if success:
+                return IngestResponse(
+                    success=True,
+                    source_id=generate_source_id(request.text[:100])
+                )
+            else:
+                return IngestResponse(success=False, error="Failed to add text source")
         else:
             return IngestResponse(success=False, error="Either url or text must be provided")
 
@@ -191,11 +182,22 @@ async def chat(request: ChatRequest):
 
 @app.get("/status")
 async def status():
-    """Get current status including notebooks list."""
+    """Get current status including auth and notebooks."""
+    authenticated = await nlm_client.is_authenticated()
+    if not authenticated:
+        return {
+            "connected": False,
+            "authenticated": False,
+            "current_notebook": None,
+            "notebooks": [],
+            "message": "請先執行 notebooklm login 登入"
+        }
+
     try:
         notebooks = await nlm_client.list_notebooks()
         return {
             "connected": True,
+            "authenticated": True,
             "current_notebook": nlm_client.current_notebook,
             "notebooks": [
                 {
@@ -209,7 +211,8 @@ async def status():
         }
     except Exception:
         return {
-            "connected": False,
+            "connected": True,
+            "authenticated": True,
             "current_notebook": None,
             "notebooks": []
         }

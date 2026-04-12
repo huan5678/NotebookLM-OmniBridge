@@ -7,11 +7,23 @@ import { ChatTab } from "./ChatTab"
 
 const RETRY_INTERVAL = 10000
 
+const retryBtnStyle: React.CSSProperties = {
+  alignSelf: "flex-start",
+  padding: "4px 12px",
+  background: "#e94560",
+  color: "#fff",
+  border: "none",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 11,
+}
+
 export function SidePanel() {
   const [activeTab, setActiveTab] = useState<"ingest" | "chat">("ingest")
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [currentNotebook, setCurrentNotebook] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
+  const [authenticated, setAuthenticated] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,18 +31,23 @@ export function SidePanel() {
     try {
       const data = await bgSend<{
         connected: boolean
+        authenticated?: boolean
         current_notebook: string | null
         notebooks?: Notebook[]
+        message?: string
       }>({ type: "NOTEBOOKLM_STATUS" })
       setConnected(data.connected)
-      setError(null)
+      setAuthenticated(data.authenticated !== false)
+      setError(data.message || null)
 
-      const nbData = await bgSend<{ notebooks: Notebook[] }>({
-        type: "NOTEBOOKLM_LIST",
-      })
-      setNotebooks(nbData.notebooks ?? [])
-      if (nbData.notebooks?.[0] && !currentNotebook) {
-        setCurrentNotebook(nbData.notebooks[0].id)
+      if (data.connected && data.authenticated !== false) {
+        const nbData = await bgSend<{ notebooks: Notebook[] }>({
+          type: "NOTEBOOKLM_LIST",
+        })
+        setNotebooks(nbData.notebooks ?? [])
+        if (nbData.notebooks?.[0] && !currentNotebook) {
+          setCurrentNotebook(nbData.notebooks[0].id)
+        }
       }
     } catch (err) {
       setConnected(false)
@@ -103,7 +120,7 @@ export function SidePanel() {
         </span>
       </div>
 
-      {/* Disconnected banner */}
+      {/* Status banners */}
       {!loading && !connected && (
         <div style={{
           padding: "10px 16px",
@@ -114,25 +131,28 @@ export function SidePanel() {
           flexDirection: "column",
           gap: 6,
         }}>
-          <span>{error || "無法連接後端伺服器"}</span>
+          <span>無法連接後端伺服器</span>
           <span style={{ color: "#aaa", fontSize: 11 }}>
-            請確認後端已啟動：cd backend && uvicorn server.main:app
+            請啟動後端：cd backend && uvicorn server.main:app --port 8000
           </span>
-          <button
-            onClick={loadStatus}
-            style={{
-              alignSelf: "flex-start",
-              padding: "4px 12px",
-              background: "#e94560",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 11,
-            }}
-          >
-            重試連線
-          </button>
+          <button onClick={loadStatus} style={retryBtnStyle}>重試連線</button>
+        </div>
+      )}
+      {!loading && connected && !authenticated && (
+        <div style={{
+          padding: "10px 16px",
+          background: "#4a3b1b",
+          color: "#f0c070",
+          fontSize: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}>
+          <span>尚未登入 NotebookLM</span>
+          <span style={{ color: "#aaa", fontSize: 11 }}>
+            請在終端機執行：python3.11 -m notebooklm login
+          </span>
+          <button onClick={loadStatus} style={retryBtnStyle}>已完成登入</button>
         </div>
       )}
 
@@ -165,6 +185,7 @@ export function SidePanel() {
           notebooks={notebooks}
           current={currentNotebook}
           onChange={handleSelectNotebook}
+          onRefresh={loadStatus}
         />
         {activeTab === "ingest" ? (
           <IngestTab currentNotebook={currentNotebook} />
