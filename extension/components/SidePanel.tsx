@@ -5,23 +5,25 @@ import { NotebookSelector } from "./NotebookSelector"
 import { IngestTab } from "./IngestTab"
 import { ChatTab } from "./ChatTab"
 
+const RETRY_INTERVAL = 10000
+
 export function SidePanel() {
   const [activeTab, setActiveTab] = useState<"ingest" | "chat">("ingest")
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [currentNotebook, setCurrentNotebook] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadStatus()
-  }, [])
-
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     try {
-      const data = await bgSend<{ connected: boolean; current_notebook: string | null; notebooks?: Notebook[] }>({
-        type: "NOTEBOOKLM_STATUS",
-      })
+      const data = await bgSend<{
+        connected: boolean
+        current_notebook: string | null
+        notebooks?: Notebook[]
+      }>({ type: "NOTEBOOKLM_STATUS" })
       setConnected(data.connected)
+      setError(null)
 
       const nbData = await bgSend<{ notebooks: Notebook[] }>({
         type: "NOTEBOOKLM_LIST",
@@ -30,12 +32,24 @@ export function SidePanel() {
       if (nbData.notebooks?.[0] && !currentNotebook) {
         setCurrentNotebook(nbData.notebooks[0].id)
       }
-    } catch {
+    } catch (err) {
       setConnected(false)
+      setError("無法連接後端伺服器")
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentNotebook])
+
+  useEffect(() => {
+    loadStatus()
+  }, [])
+
+  // Auto-retry when disconnected
+  useEffect(() => {
+    if (connected || loading) return
+    const timer = setInterval(loadStatus, RETRY_INTERVAL)
+    return () => clearInterval(timer)
+  }, [connected, loading, loadStatus])
 
   const handleSelectNotebook = useCallback((id: string) => {
     setCurrentNotebook(id)
@@ -72,17 +86,55 @@ export function SidePanel() {
             {loading ? "載入中..." : `${notebooks.length} 個 Notebook`}
           </p>
         </div>
-        <span style={{
-          display: "inline-block",
-          padding: "2px 8px",
-          borderRadius: 12,
-          fontSize: 11,
-          background: connected ? "#1b4332" : "#4a1b1b",
-          color: connected ? "#52b788" : "#f07070",
-        }}>
+        <span
+          onClick={loadStatus}
+          style={{
+            display: "inline-block",
+            padding: "2px 8px",
+            borderRadius: 12,
+            fontSize: 11,
+            background: connected ? "#1b4332" : "#4a1b1b",
+            color: connected ? "#52b788" : "#f07070",
+            cursor: "pointer",
+          }}
+          title="點擊重新連線"
+        >
           {connected ? "● 已連接" : "● 未連接"}
         </span>
       </div>
+
+      {/* Disconnected banner */}
+      {!loading && !connected && (
+        <div style={{
+          padding: "10px 16px",
+          background: "#4a1b1b",
+          color: "#f07070",
+          fontSize: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}>
+          <span>{error || "無法連接後端伺服器"}</span>
+          <span style={{ color: "#aaa", fontSize: 11 }}>
+            請確認後端已啟動：cd backend && uvicorn server.main:app
+          </span>
+          <button
+            onClick={loadStatus}
+            style={{
+              alignSelf: "flex-start",
+              padding: "4px 12px",
+              background: "#e94560",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 11,
+            }}
+          >
+            重試連線
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>

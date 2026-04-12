@@ -3,7 +3,7 @@
  * 中繼 Extension UI 與 FastAPI Backend 之間的通訊
  */
 
-const API_SERVER = "http://localhost:8000"
+const DEFAULT_API = "http://localhost:8000"
 const TAG = "[BG]"
 
 interface InboundMessage {
@@ -22,19 +22,26 @@ interface InboundMessage {
   title?: string
 }
 
+async function getApiUrl(): Promise<string> {
+  const result = await chrome.storage.local.get({ apiUrl: DEFAULT_API })
+  return (result.apiUrl as string).replace(/\/+$/, "")
+}
+
 async function apiGet<T>(path: string): Promise<T> {
-  const resp = await fetch(`${API_SERVER}${path}`)
-  if (!resp.ok) throw new Error(`API ${resp.status}: ${await resp.text()}`)
+  const base = await getApiUrl()
+  const resp = await fetch(`${base}${path}`)
+  if (!resp.ok) throw new Error(`後端錯誤 ${resp.status}: ${await resp.text()}`)
   return resp.json()
 }
 
 async function apiPost<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
-  const resp = await fetch(`${API_SERVER}${path}`, {
+  const base = await getApiUrl()
+  const resp = await fetch(`${base}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  if (!resp.ok) throw new Error(`API ${resp.status}: ${await resp.text()}`)
+  if (!resp.ok) throw new Error(`後端錯誤 ${resp.status}: ${await resp.text()}`)
   return resp.json()
 }
 

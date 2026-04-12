@@ -63,12 +63,25 @@ export function IngestTab({ currentNotebook }: Props) {
     setLoading(true)
     setStatus("攝入中...")
     try {
-      await bgSend({
-        type: "NOTEBOOKLM_INGEST",
-        url: pageContent.url,
-        notebookId: currentNotebook,
-      })
+      const text = pageContent.selectedText || pageContent.fullText
+      if (text) {
+        // Send text content directly
+        await bgSend({
+          type: "NOTEBOOKLM_INGEST",
+          text,
+          title: pageContent.title,
+          notebookId: currentNotebook,
+        })
+      } else {
+        // Fallback to URL
+        await bgSend({
+          type: "NOTEBOOKLM_INGEST",
+          url: pageContent.url,
+          notebookId: currentNotebook,
+        })
+      }
       setStatus("已發送至 NotebookLM")
+      setPageContent(null)
     } catch (err) {
       setStatus(`攝入失敗: ${err}`)
     } finally {
