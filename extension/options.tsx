@@ -1,161 +1,227 @@
 import React, { useState, useEffect } from "react"
-import { getSettings, saveSettings, type Settings } from "~lib/settings"
+import { getSettings, saveSettings } from "~lib/settings"
+
+const PAGE_STYLE: React.CSSProperties = {
+  maxWidth: 520,
+  margin: "0 auto",
+  padding: 24,
+  background: "#1a1a2e",
+  color: "#eee",
+  fontFamily: "system-ui, -apple-system, sans-serif",
+  minHeight: "100vh",
+}
+
+const CODE_STYLE: React.CSSProperties = {
+  display: "block",
+  padding: 10,
+  background: "#0f3460",
+  borderRadius: 6,
+  color: "#ccc",
+  fontSize: 12,
+  fontFamily: "monospace",
+  whiteSpace: "pre-wrap",
+  userSelect: "all",
+  marginTop: 6,
+}
+
+const STEP_STYLE: React.CSSProperties = {
+  padding: 14,
+  background: "#16213e",
+  borderRadius: 8,
+  border: "1px solid #2a2a4a",
+}
+
+interface StepStatus {
+  backend: "unknown" | "ok" | "fail"
+  auth: "unknown" | "ok" | "fail"
+}
 
 function Options() {
   const [apiUrl, setApiUrl] = useState("")
   const [saved, setSaved] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [status, setStatus] = useState<StepStatus>({ backend: "unknown", auth: "unknown" })
 
   useEffect(() => {
-    getSettings().then((s) => setApiUrl(s.apiUrl))
+    getSettings().then((s) => {
+      setApiUrl(s.apiUrl)
+      checkAll(s.apiUrl)
+    })
   }, [])
 
-  async function handleSave() {
-    await saveSettings({ apiUrl: apiUrl.replace(/\/+$/, "") })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
+  async function checkAll(url?: string) {
+    const base = (url || apiUrl).replace(/\/+$/, "")
+    setChecking(true)
+    const next: StepStatus = { backend: "unknown", auth: "unknown" }
 
-  async function handleTest() {
-    setTesting(true)
-    setTestResult(null)
     try {
-      const url = apiUrl.replace(/\/+$/, "")
-      const resp = await fetch(`${url}/health`)
-      if (resp.ok) {
-        setTestResult({ ok: true, message: "連線成功" })
-      } else {
-        setTestResult({ ok: false, message: `伺服器回傳 ${resp.status}` })
-      }
+      const healthResp = await fetch(`${base}/health`)
+      next.backend = healthResp.ok ? "ok" : "fail"
     } catch {
-      setTestResult({ ok: false, message: "無法連線，請確認後端已啟動" })
-    } finally {
-      setTesting(false)
+      next.backend = "fail"
     }
+
+    if (next.backend === "ok") {
+      try {
+        const statusResp = await fetch(`${base}/status`)
+        if (statusResp.ok) {
+          const data = await statusResp.json()
+          next.auth = data.authenticated === false ? "fail" : "ok"
+        }
+      } catch {
+        next.auth = "fail"
+      }
+    }
+
+    setStatus(next)
+    setChecking(false)
   }
 
-  async function handleReset() {
-    setApiUrl("http://localhost:8000")
-    await saveSettings({ apiUrl: "http://localhost:8000" })
+  async function handleSave() {
+    const cleaned = apiUrl.replace(/\/+$/, "")
+    setApiUrl(cleaned)
+    await saveSettings({ apiUrl: cleaned })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+    checkAll(cleaned)
   }
+
+  const allGood = status.backend === "ok" && status.auth === "ok"
 
   return (
-    <div style={{
-      maxWidth: 480,
-      margin: "0 auto",
-      padding: 24,
-      background: "#1a1a2e",
-      color: "#eee",
-      fontFamily: "system-ui, -apple-system, sans-serif",
-      minHeight: "100vh",
-    }}>
-      <h1 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>
-        NotebookLM Omni-Bridge 設定
+    <div style={PAGE_STYLE}>
+      <h1 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 6px" }}>
+        NotebookLM Omni-Bridge
       </h1>
+      <p style={{ fontSize: 12, color: "#888", margin: "0 0 20px" }}>
+        設定與環境檢查
+      </p>
 
-      {/* API URL */}
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ display: "block", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
-          後端伺服器 URL
-        </label>
-        <input
-          type="url"
-          value={apiUrl}
-          onChange={(e) => setApiUrl(e.target.value)}
-          placeholder="http://localhost:8000"
-          style={{
-            width: "100%",
-            padding: 10,
-            background: "#0f3460",
-            color: "#eee",
-            border: "1px solid #533483",
-            borderRadius: 6,
-            fontSize: 14,
-            boxSizing: "border-box",
-          }}
-        />
-      </div>
+      {/* Setup steps */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button
-          onClick={handleSave}
-          style={{
-            padding: "8px 20px",
-            background: "#e94560",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: 13,
-          }}
-        >
-          {saved ? "已儲存" : "儲存"}
-        </button>
-        <button
-          onClick={handleTest}
-          disabled={testing}
-          style={{
-            padding: "8px 20px",
-            background: "#533483",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: 13,
-            opacity: testing ? 0.6 : 1,
-          }}
-        >
-          {testing ? "測試中..." : "測試連線"}
-        </button>
-        <button
-          onClick={handleReset}
-          style={{
-            padding: "8px 20px",
-            background: "transparent",
-            color: "#888",
-            border: "1px solid #444",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: 13,
-          }}
-        >
-          重設預設
-        </button>
-      </div>
-
-      {/* Test result */}
-      {testResult && (
-        <div style={{
-          padding: 10,
-          borderRadius: 6,
-          fontSize: 13,
-          background: testResult.ok ? "#1b4332" : "#4a1b1b",
-          color: testResult.ok ? "#52b788" : "#f07070",
-        }}>
-          {testResult.ok ? "●" : "●"} {testResult.message}
+        {/* Step 1: Python + pip */}
+        <div style={STEP_STYLE}>
+          <StepHeader num={1} title="安裝 Python 套件" />
+          <code style={CODE_STYLE}>pip install notebooklm-py fastapi uvicorn</code>
         </div>
-      )}
 
-      {/* Help */}
-      <div style={{ marginTop: 32, fontSize: 12, color: "#666", lineHeight: 1.6 }}>
-        <p>啟動後端伺服器：</p>
-        <code style={{
-          display: "block",
-          padding: 8,
-          background: "#0f3460",
-          borderRadius: 4,
-          color: "#aaa",
-          fontSize: 11,
-        }}>
-          cd backend && pip install -r requirements.txt && uvicorn server.main:app --port 8000
-        </code>
+        {/* Step 2: Login */}
+        <div style={STEP_STYLE}>
+          <StepHeader num={2} title="登入 NotebookLM" status={status.auth} />
+          <code style={CODE_STYLE}>python3.11 -m notebooklm login</code>
+          <p style={{ fontSize: 11, color: "#888", margin: "6px 0 0" }}>
+            會開啟瀏覽器進行 Google OAuth 登入
+          </p>
+        </div>
+
+        {/* Step 3: Start backend */}
+        <div style={STEP_STYLE}>
+          <StepHeader num={3} title="啟動後端伺服器" status={status.backend} />
+          <code style={CODE_STYLE}>cd backend && uvicorn server.main:app --port 8000</code>
+        </div>
+
+        {/* Step 4: API URL config */}
+        <div style={STEP_STYLE}>
+          <StepHeader num={4} title="後端 URL 設定" />
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input
+              type="url"
+              value={apiUrl}
+              onChange={(e) => setApiUrl(e.target.value)}
+              placeholder="http://localhost:8000"
+              style={{
+                flex: 1,
+                padding: 8,
+                background: "#0f3460",
+                color: "#eee",
+                border: "1px solid #533483",
+                borderRadius: 6,
+                fontSize: 13,
+                boxSizing: "border-box",
+              }}
+            />
+            <button onClick={handleSave} style={btnStyle("#e94560")}>
+              {saved ? "已儲存" : "儲存"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Check button */}
+      <div style={{ marginTop: 16, display: "flex", gap: 8, alignItems: "center" }}>
+        <button
+          onClick={() => checkAll()}
+          disabled={checking}
+          style={btnStyle("#533483")}
+        >
+          {checking ? "檢查中..." : "重新檢查"}
+        </button>
+        {allGood && (
+          <span style={{ fontSize: 13, color: "#52b788" }}>
+            全部就緒，可以使用了
+          </span>
+        )}
       </div>
     </div>
   )
+}
+
+function StepHeader({ num, title, status }: {
+  num: number
+  title: string
+  status?: "unknown" | "ok" | "fail"
+}) {
+  const indicator = status === "ok"
+    ? { text: "OK", color: "#52b788", bg: "#1b4332" }
+    : status === "fail"
+    ? { text: "!", color: "#f07070", bg: "#4a1b1b" }
+    : null
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+      <span style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        background: "#e94560",
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: 600,
+        flexShrink: 0,
+      }}>
+        {num}
+      </span>
+      <span style={{ fontSize: 14, fontWeight: 500 }}>{title}</span>
+      {indicator && (
+        <span style={{
+          marginLeft: "auto",
+          padding: "1px 8px",
+          borderRadius: 10,
+          fontSize: 11,
+          background: indicator.bg,
+          color: indicator.color,
+        }}>
+          {indicator.text}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function btnStyle(bg: string): React.CSSProperties {
+  return {
+    padding: "8px 16px",
+    background: bg,
+    color: "#fff",
+    border: "none",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 13,
+  }
 }
 
 export default Options

@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { bgSend } from "~lib/messaging"
+import { addToHistory, getHistory, type IngestRecord } from "~lib/history"
 import type { PageContent } from "~lib/types"
 
 interface Props {
@@ -12,6 +13,17 @@ export function IngestTab({ currentNotebook }: Props) {
   const [status, setStatus] = useState("選擇 Notebook → 吸取頁面 → 發送")
   const [urlInput, setUrlInput] = useState("")
   const [urlMode, setUrlMode] = useState(false)
+  const [history, setHistory] = useState<IngestRecord[]>([])
+
+  useEffect(() => {
+    getHistory().then(setHistory)
+  }, [])
+
+  async function recordIngest(title: string, url?: string) {
+    if (!currentNotebook) return
+    await addToHistory({ title, url, notebookId: currentNotebook })
+    setHistory(await getHistory())
+  }
 
   const handleAbsorb = useCallback(async () => {
     setLoading(true)
@@ -46,6 +58,7 @@ export function IngestTab({ currentNotebook }: Props) {
         notebookId: currentNotebook,
       })
       setStatus("已發送至 NotebookLM")
+      await recordIngest(urlInput.trim(), urlInput.trim())
       setUrlInput("")
     } catch (err) {
       setStatus(`攝入失敗: ${err}`)
@@ -65,7 +78,6 @@ export function IngestTab({ currentNotebook }: Props) {
     try {
       const text = pageContent.selectedText || pageContent.fullText
       if (text) {
-        // Send text content directly
         await bgSend({
           type: "NOTEBOOKLM_INGEST",
           text,
@@ -73,7 +85,6 @@ export function IngestTab({ currentNotebook }: Props) {
           notebookId: currentNotebook,
         })
       } else {
-        // Fallback to URL
         await bgSend({
           type: "NOTEBOOKLM_INGEST",
           url: pageContent.url,
@@ -81,6 +92,7 @@ export function IngestTab({ currentNotebook }: Props) {
         })
       }
       setStatus("已發送至 NotebookLM")
+      await recordIngest(pageContent.title, pageContent.url)
       setPageContent(null)
     } catch (err) {
       setStatus(`攝入失敗: ${err}`)
@@ -112,7 +124,7 @@ export function IngestTab({ currentNotebook }: Props) {
             opacity: loading ? 0.6 : 1,
           }}
         >
-          {loading ? "吸取中..." : "吸取當前頁面"}
+          {loading ? "處理中..." : "吸取當前頁面"}
         </button>
         <button
           onClick={() => setUrlMode((v) => !v)}
@@ -168,7 +180,6 @@ export function IngestTab({ currentNotebook }: Props) {
       {/* Page preview */}
       {pageContent && (
         <div style={{
-          flex: 1,
           overflow: "auto",
           background: "#0f3460",
           borderRadius: 8,
@@ -211,9 +222,59 @@ export function IngestTab({ currentNotebook }: Props) {
       )}
 
       {/* Status */}
-      <div style={{ fontSize: 11, color: "#888", textAlign: "center", marginTop: "auto" }}>
+      <div style={{ fontSize: 11, color: "#888", textAlign: "center" }}>
         {status}
       </div>
+
+      {/* History */}
+      {history.length > 0 && (
+        <div style={{ marginTop: "auto" }}>
+          <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+            最近攝入
+          </div>
+          <div style={{
+            maxHeight: 120,
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}>
+            {history.slice(0, 10).map((r) => (
+              <div key={r.id} style={{
+                fontSize: 11,
+                color: "#888",
+                padding: "3px 6px",
+                background: "#16213e",
+                borderRadius: 4,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}>
+                <span style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                }}>
+                  {r.title}
+                </span>
+                <span style={{ color: "#555", flexShrink: 0 }}>
+                  {formatTime(r.timestamp)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso)
+  const now = new Date()
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
+  }
+  return d.toLocaleDateString("zh-TW", { month: "short", day: "numeric" })
 }
