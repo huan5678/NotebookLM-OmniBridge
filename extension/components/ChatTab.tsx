@@ -1,14 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { marked } from "marked"
 import { bgSend } from "~lib/messaging"
-import { startSpeechRecognition, isSpeechSupported } from "~lib/speech"
 import type { ChatMessage } from "~lib/types"
+import { PromptInputBox } from "~components/ui/ai-prompt-box"
 
-// Configure marked for safe output
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
+marked.setOptions({ breaks: true, gfm: true })
 
 interface Props {
   currentNotebook: string | null
@@ -16,31 +12,44 @@ interface Props {
 
 export function ChatTab({ currentNotebook }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [recording, setRecording] = useState(false)
-  const stopRecRef = useRef<(() => void) | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || loading) return
+  const handleSend = useCallback(async (text: string, files?: File[]) => {
+    if (!text.trim() && (!files || files.length === 0)) return
     if (!currentNotebook) {
       setError("請先選擇 Notebook")
       return
     }
 
+    // If files attached, read and ingest them
+    if (files && files.length > 0) {
+      for (const file of files) {
+        try {
+          const content = await file.text()
+          await bgSend({
+            type: "NOTEBOOKLM_INGEST",
+            text: content,
+            title: file.name,
+            notebookId: currentNotebook,
+          })
+        } catch {}
+      }
+    }
+
+    if (!text.trim()) return
+
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
-      content: input.trim(),
+      content: text.trim(),
     }
     setMessages((prev) => [...prev, userMsg])
-    setInput("")
     setLoading(true)
     setError(null)
 
@@ -65,27 +74,20 @@ export function ChatTab({ currentNotebook }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, currentNotebook])
+  }, [currentNotebook])
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+    <div className="flex flex-col gap-2 flex-1 min-h-0">
       {/* Messages */}
-      <div style={{
-        flex: 1,
-        overflow: "auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        padding: "4px 0",
-      }}>
+      <div className="flex-1 overflow-auto flex flex-col gap-2 py-1">
         {messages.length === 0 && (
-          <p style={{ color: "#666", fontSize: 13, textAlign: "center", marginTop: 40 }}>
+          <p className="text-gray-500 text-sm text-center mt-10">
             選擇 Notebook 後開始對話
           </p>
         )}
         {messages.map((msg) =>
           msg.role === "user" ? (
-            <div key={msg.id} style={userBubbleStyle}>
+            <div key={msg.id} className="self-end max-w-[85%] px-3 py-2 rounded-2xl bg-[#e94560] text-white text-sm whitespace-pre-wrap break-words">
               {msg.content}
             </div>
           ) : (
@@ -93,8 +95,8 @@ export function ChatTab({ currentNotebook }: Props) {
           )
         )}
         {loading && (
-          <div style={{ ...assistantBubbleStyle, color: "#aaa" }}>
-            思考中...
+          <div className="self-start max-w-[90%] px-3 py-2 rounded-2xl bg-[#0f3460] text-gray-400 text-sm">
+            <span className="animate-pulse">思考中...</span>
           </div>
         )}
         <div ref={bottomRef} />
@@ -102,78 +104,16 @@ export function ChatTab({ currentNotebook }: Props) {
 
       {/* Error */}
       {error && (
-        <div style={{ color: "#f07070", fontSize: 11 }}>{error}</div>
+        <div className="text-red-400 text-xs px-1">{error}</div>
       )}
 
-      {/* Input */}
-      <form
-        onSubmit={(e) => { e.preventDefault(); handleSend() }}
-        style={{ display: "flex", gap: 4 }}
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={recording ? "聆聽中..." : "輸入訊息..."}
-          disabled={loading}
-          style={{
-            flex: 1,
-            padding: 10,
-            background: "#0f3460",
-            color: "#eee",
-            border: recording ? "1px solid #e94560" : "1px solid #533483",
-            borderRadius: 6,
-            fontSize: 13,
-          }}
-        />
-        {isSpeechSupported() && (
-          <button
-            type="button"
-            onClick={() => {
-              if (recording) {
-                stopRecRef.current?.()
-                stopRecRef.current = null
-                setRecording(false)
-              } else {
-                setRecording(true)
-                stopRecRef.current = startSpeechRecognition({
-                  onResult: (t) => setInput(t),
-                  onEnd: () => setRecording(false),
-                  onError: () => setRecording(false),
-                })
-              }
-            }}
-            style={{
-              padding: "8px 10px",
-              background: recording ? "#e94560" : "#0f3460",
-              color: recording ? "#fff" : "#888",
-              border: "1px solid #533483",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: 14,
-            }}
-            title={recording ? "停止錄音" : "語音輸入"}
-          >
-            {recording ? "■" : "🎤"}
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          style={{
-            padding: "10px 14px",
-            background: "#e94560",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: 13,
-          }}
-        >
-          傳送
-        </button>
-      </form>
+      {/* Prompt Input */}
+      <PromptInputBox
+        onSend={handleSend}
+        isLoading={loading}
+        placeholder="輸入訊息..."
+      />
 
-      {/* Markdown styles for assistant bubbles */}
       <style>{markdownCSS}</style>
     </div>
   )
@@ -183,34 +123,10 @@ function MarkdownBubble({ content }: { content: string }) {
   const html = useMemo(() => marked.parse(content) as string, [content])
   return (
     <div
-      style={assistantBubbleStyle}
-      className="md-bubble"
+      className="md-bubble self-start max-w-[90%] px-3 py-2 rounded-2xl bg-[#0f3460] text-gray-200 text-sm break-words"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
-}
-
-const userBubbleStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 8,
-  background: "#e94560",
-  color: "#fff",
-  alignSelf: "flex-end",
-  maxWidth: "85%",
-  fontSize: 13,
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-word",
-}
-
-const assistantBubbleStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 8,
-  background: "#0f3460",
-  color: "#ddd",
-  alignSelf: "flex-start",
-  maxWidth: "90%",
-  fontSize: 13,
-  wordBreak: "break-word",
 }
 
 const markdownCSS = `
