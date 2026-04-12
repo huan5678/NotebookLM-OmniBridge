@@ -53,7 +53,10 @@ chrome.runtime.onMessage.addListener(
       try {
         switch (msg.type) {
           case "OPEN_SIDE_PANEL": {
-            const windowId = sender.tab?.windowId
+            // popup 沒有 sender.tab，需要從當前 window 取得 windowId
+            const windowId =
+              sender.tab?.windowId ??
+              (await chrome.windows.getCurrent()).id
             if (windowId) {
               await chrome.sidePanel.open({ windowId })
             }
@@ -178,8 +181,11 @@ chrome.runtime.onMessage.addListener(
   }
 )
 
-// Context menu — right-click "Send to NotebookLM"
+// On install: set up side panel + context menu
 chrome.runtime.onInstalled.addListener(() => {
+  // 點擊 extension icon 直接開啟 side panel（不經過 popup）
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
+
   chrome.contextMenus.create({
     id: "send-to-notebooklm",
     title: "傳送至 NotebookLM",

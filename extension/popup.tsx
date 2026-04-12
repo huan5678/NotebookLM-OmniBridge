@@ -1,42 +1,31 @@
 import React from "react"
 
+/**
+ * Popup 只在 setPanelBehavior 未生效時作為 fallback 顯示。
+ * 正常情況下，點擊 icon 會直接開啟 side panel。
+ */
 function Popup() {
-  const openSidePanel = () => {
-    chrome.runtime.sendMessage({ type: "OPEN_SIDE_PANEL" })
-    window.close()
-  }
-
   return (
     <div style={{
-      width: 280,
+      width: 260,
       padding: 16,
       background: "#1a1a2e",
       color: "#eee",
       fontFamily: "system-ui, -apple-system, sans-serif",
       display: "flex",
       flexDirection: "column",
-      gap: 12,
+      gap: 10,
     }}>
       <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
         NotebookLM Omni-Bridge
       </h1>
       <p style={{ fontSize: 12, color: "#aaa", margin: 0 }}>
-        請使用側邊面板操作
+        請從瀏覽器右上角開啟側邊面板
       </p>
-      <button
-        onClick={openSidePanel}
-        style={{
-          padding: "8px 16px",
-          background: "#e94560",
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          cursor: "pointer",
-          fontSize: 13,
-        }}
-      >
-        開啟側邊面板
-      </button>
+      <p style={{ fontSize: 11, color: "#666", margin: 0 }}>
+        Chrome 選單 → 更多工具 → 側邊面板，
+        或重新載入此擴充功能。
+      </p>
     </div>
   )
 }

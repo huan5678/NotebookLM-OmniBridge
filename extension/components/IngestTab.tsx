@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { bgSend } from "~lib/messaging"
 import { addToHistory, getHistory, type IngestRecord } from "~lib/history"
 import type { PageContent } from "~lib/types"
+
+const ACCEPTED_TYPES = ".txt,.md,.csv,.json,.html,.xml,.log"
 
 interface Props {
   currentNotebook: string | null
@@ -13,7 +15,9 @@ export function IngestTab({ currentNotebook }: Props) {
   const [status, setStatus] = useState("選擇 Notebook → 吸取頁面 → 發送")
   const [urlInput, setUrlInput] = useState("")
   const [urlMode, setUrlMode] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [history, setHistory] = useState<IngestRecord[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getHistory().then(setHistory)
@@ -101,6 +105,34 @@ export function IngestTab({ currentNotebook }: Props) {
     }
   }, [pageContent, currentNotebook])
 
+  const handleFileUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    if (!currentNotebook) {
+      setStatus("請先選擇 Notebook")
+      return
+    }
+    const file = files[0]
+    setLoading(true)
+    setStatus(`讀取 ${file.name}...`)
+    try {
+      const text = await file.text()
+      await bgSend({
+        type: "NOTEBOOKLM_INGEST",
+        text,
+        title: file.name,
+        notebookId: currentNotebook,
+      })
+      setStatus(`已發送「${file.name}」至 NotebookLM`)
+      await recordIngest(file.name)
+    } catch (err) {
+      setStatus(`上傳失敗: ${err}`)
+    } finally {
+      setLoading(false)
+      setDragging(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }, [currentNotebook])
+
   const previewText = pageContent
     ? (pageContent.selectedText || pageContent.fullText)
     : ""
@@ -176,6 +208,37 @@ export function IngestTab({ currentNotebook }: Props) {
           </button>
         </div>
       )}
+
+      {/* File upload */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFileUpload(e.dataTransfer.files) }}
+        onClick={() => fileInputRef.current?.click()}
+        style={{
+          padding: "12px 10px",
+          border: dragging ? "2px dashed #e94560" : "2px dashed #2a2a4a",
+          borderRadius: 8,
+          textAlign: "center",
+          cursor: "pointer",
+          background: dragging ? "#e9456010" : "transparent",
+          transition: "all 0.2s",
+        }}
+      >
+        <div style={{ fontSize: 12, color: dragging ? "#e94560" : "#666" }}>
+          拖放檔案至此 或 點擊選擇
+        </div>
+        <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
+          支援 .txt .md .csv .json .html
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_TYPES}
+          style={{ display: "none" }}
+          onChange={(e) => handleFileUpload(e.target.files)}
+        />
+      </div>
 
       {/* Page preview */}
       {pageContent && (
