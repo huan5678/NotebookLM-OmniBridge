@@ -2,7 +2,7 @@
   "name": "notebooklm-omni-bridge",
   "displayName": "NotebookLM Omni-Bridge",
   "version": "0.2.0",
-  "description": "將網頁內容傳送到 NotebookLM",
+  "description": "__MSG_ext_description__",
   "private": true,
   "scripts": {
     "dev": "plasmo dev",
@@ -30,6 +30,7 @@
     "typescript": "^5.3.0"
   },
   "manifest": {
+    "default_locale": "zh_TW",
     "permissions": [
       "storage",
       "activeTab",

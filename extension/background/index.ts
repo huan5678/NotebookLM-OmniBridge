@@ -3,11 +3,25 @@
  * 中繼 Extension UI 與 FastAPI Backend 之間的通訊
  */
 
+import type { IngestProgressMessage } from "~lib/types"
+
 const DEFAULT_API = "http://localhost:8000"
 const TAG = "[BG]"
 
+function pushProgress(step: number, label: string, done: boolean, error?: string): void {
+  const msg: IngestProgressMessage = {
+    type: "NOTEBOOKLM_INGEST_PROGRESS",
+    step,
+    label,
+    done,
+    error,
+  }
+  chrome.runtime.sendMessage(msg).catch(() => {})
+}
+
 interface InboundMessage {
   type:
+    | "SETUP_SELECTION_WATCHER"
     | "ABSORB_PAGE"
     | "NOTEBOOKLM_LIST"
     | "NOTEBOOKLM_SELECT"
@@ -15,8 +29,12 @@ interface InboundMessage {
     | "NOTEBOOKLM_CHAT"
     | "NOTEBOOKLM_INGEST"
     | "NOTEBOOKLM_STATUS"
+    | "NOTEBOOKLM_LIST_SOURCES"
+    | "NOTEBOOKLM_DELETE_SOURCE"
+    | "NOTEBOOKLM_RENAME_SOURCE"
     | "OPEN_SIDE_PANEL"
   notebookId?: string
+  sourceId?: string
   name?: string
   message?: string
   url?: string
@@ -47,6 +65,24 @@ async function apiPost<T>(path: string, body: Record<string, unknown> = {}): Pro
   return resp.json()
 }
 
+async function apiDelete<T>(path: string): Promise<T> {
+  const base = await getApiUrl()
+  const resp = await fetch(`${base}${path}`, { method: "DELETE" })
+  if (!resp.ok) throw new Error(`後端錯誤 ${resp.status}: ${await resp.text()}`)
+  return resp.json()
+}
+
+async function apiPatch<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+  const base = await getApiUrl()
+  const resp = await fetch(`${base}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!resp.ok) throw new Error(`後端錯誤 ${resp.status}: ${await resp.text()}`)
+  return resp.json()
+}
+
 chrome.runtime.onMessage.addListener(
   (msg: InboundMessage, sender, sendResponse) => {
     ;(async () => {
@@ -64,17 +100,36 @@ chrome.runtime.onMessage.addListener(
             break
           }
 
+          case "SETUP_SELECTION_WATCHER": {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+            if (tabs[0]?.id) {
+              await chrome.scripting.executeScript({
+                target: { tabId: tabs[0].id },
+                func: () => {
+                  if ((window as any).__omniBridgeWatcher) return
+                  ;(window as any).__omniBridgeWatcher = true
+                  ;(window as any).__omniBridgeSelection = ""
+                  document.addEventListener("selectionchange", () => {
+                    const sel = window.getSelection()?.toString().trim() ?? ""
+                    if (sel) (window as any).__omniBridgeSelection = sel
+                  })
+                },
+              })
+            }
+            sendResponse({ success: true })
+            break
+          }
+
           case "ABSORB_PAGE": {
             const tabs = await chrome.tabs.query({
               active: true,
               currentWindow: true,
             })
-            if (!tabs[0]?.id) throw new Error("找不到當前標籤頁")
+            if (!tabs[0]?.id) throw new Error(chrome.i18n.getMessage("bg_no_tab") || "找不到當前標籤頁")
             const tabId = tabs[0].id
             const [result] = await chrome.scripting.executeScript({
               target: { tabId },
               func: () => {
-                // Inline content script for page absorption
                 function getPageTitle(): string {
                   const el = document.querySelector(
                     'meta[property="og:title"]'
@@ -108,14 +163,20 @@ chrome.runtime.onMessage.addListener(
                   return clone.textContent?.trim() ?? ""
                 }
 
-                const selection = window.getSelection()
-                const selectedText = selection?.toString().trim() ?? ""
+                // Read stored selection (from watcher) or try live selection
+                const storedSelection = ((window as any).__omniBridgeSelection as string) ?? ""
+                const liveSelection = window.getSelection()?.toString().trim() ?? ""
+                const selectedText = storedSelection || liveSelection
                 const fullText = extractReadableText()
+
+                // Clear stored selection after reading
+                ;(window as any).__omniBridgeSelection = ""
+
                 return {
                   title: getPageTitle(),
                   url: window.location.href,
                   selectedText,
-                  fullText: selectedText || fullText,
+                  fullText,
                   timestamp: new Date().toISOString(),
                 }
               },
@@ -152,13 +213,59 @@ chrome.runtime.onMessage.addListener(
           }
 
           case "NOTEBOOKLM_INGEST": {
-            const body: Record<string, unknown> = { notebook_id: msg.notebookId }
-            if (msg.url) body.url = msg.url
-            if (msg.text) {
-              body.text = msg.text
-              body.title = msg.title
+            try {
+              // Step 1: Prepare notebook
+              pushProgress(1, chrome.i18n.getMessage("ingest_progress_prepare") || "選取 Notebook...", false)
+              const prep = await apiPost<{ success: boolean; notebook_id?: string; error?: string }>(
+                "/ingest/prepare",
+                { notebook_id: msg.notebookId },
+              )
+              if (!prep.success) throw new Error(prep.error ?? "準備失敗")
+
+              // Step 2: Sending content
+              pushProgress(2, chrome.i18n.getMessage("ingest_progress_send") || "傳送內容...", false)
+
+              // Step 3: Waiting for NotebookLM
+              pushProgress(3, chrome.i18n.getMessage("ingest_progress_processing") || "NotebookLM 處理中...", false)
+
+              const addBody: Record<string, unknown> = {
+                notebook_id: prep.notebook_id ?? msg.notebookId,
+              }
+              if (msg.url) addBody.url = msg.url
+              if (msg.text) {
+                addBody.text = msg.text
+                addBody.title = msg.title
+              }
+              const result = await apiPost<{ success: boolean; source_id?: string; error?: string }>(
+                "/ingest/add_source",
+                addBody,
+              )
+              if (!result.success) throw new Error(result.error ?? "攝入失敗")
+
+              // Step 4: Done
+              pushProgress(4, chrome.i18n.getMessage("ingest_progress_done") || "完成", true)
+              sendResponse({ success: true, data: result })
+            } catch (ingestErr) {
+              pushProgress(-1, String(ingestErr), true, String(ingestErr))
+              sendResponse({ success: false, error: String(ingestErr) })
             }
-            const data = await apiPost("/ingest", body)
+            break
+          }
+
+          case "NOTEBOOKLM_LIST_SOURCES": {
+            const data = await apiGet(`/notebooks/${msg.notebookId}/sources`)
+            sendResponse({ success: true, data })
+            break
+          }
+
+          case "NOTEBOOKLM_DELETE_SOURCE": {
+            const data = await apiDelete(`/notebooks/${msg.notebookId}/sources/${msg.sourceId}`)
+            sendResponse({ success: true, data })
+            break
+          }
+
+          case "NOTEBOOKLM_RENAME_SOURCE": {
+            const data = await apiPatch(`/notebooks/${msg.notebookId}/sources/${msg.sourceId}`, { title: msg.title })
             sendResponse({ success: true, data })
             break
           }
@@ -188,7 +295,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
   chrome.contextMenus.create({
     id: "send-to-notebooklm",
-    title: "傳送至 NotebookLM",
+    title: chrome.i18n.getMessage("context_menu_send") || "傳送至 NotebookLM",
     contexts: ["selection", "page"],
   })
 })
@@ -226,7 +333,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         type: "basic",
         iconUrl: chrome.runtime.getURL("icon128.plasmo.png"),
         title: "NotebookLM Omni-Bridge",
-        message: `已傳送「${title}」`,
+        message: chrome.i18n.getMessage("notification_sent", title) || `已傳送「${title}」`,
       })
     }
   } catch (err) {

@@ -1,0 +1,309 @@
+{
+  "ext_description": {
+    "message": "Send web content to NotebookLM"
+  },
+  "sidepanel_loading": {
+    "message": "Loading..."
+  },
+  "sidepanel_notebook_count": {
+    "message": "$1 Notebooks",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sidepanel_click_reconnect": {
+    "message": "Click to reconnect"
+  },
+  "sidepanel_connected": {
+    "message": "● Connected"
+  },
+  "sidepanel_disconnected": {
+    "message": "● Disconnected"
+  },
+  "sidepanel_error_no_backend": {
+    "message": "Cannot connect to backend server"
+  },
+  "sidepanel_error_backend_cmd": {
+    "message": "Start the backend: cd backend && uvicorn server.main:app --port 8000"
+  },
+  "sidepanel_retry": {
+    "message": "Retry"
+  },
+  "sidepanel_not_logged_in": {
+    "message": "Not logged in to NotebookLM"
+  },
+  "sidepanel_login_cmd": {
+    "message": "Run in terminal: python3.11 -m notebooklm login"
+  },
+  "sidepanel_login_done": {
+    "message": "Login completed"
+  },
+  "sidepanel_tab_ingest": {
+    "message": "Ingest"
+  },
+  "sidepanel_tab_chat": {
+    "message": "Chat"
+  },
+  "ingest_status_default": {
+    "message": "Select Notebook → Capture page → Send"
+  },
+  "ingest_absorbing": {
+    "message": "Capturing..."
+  },
+  "ingest_absorbed_selection": {
+    "message": "Captured selected text ($1 chars)",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_absorbed_page": {
+    "message": "Captured page content ($1 chars)",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_absorb_failed": {
+    "message": "Capture failed: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_no_notebook": {
+    "message": "Please select a Notebook first"
+  },
+  "ingest_ingesting": {
+    "message": "Ingesting..."
+  },
+  "ingest_sent": {
+    "message": "Sent to NotebookLM"
+  },
+  "ingest_ingest_failed": {
+    "message": "Ingest failed: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_reading_file": {
+    "message": "Reading $1...",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_file_sent": {
+    "message": "Sent \"$1\" to NotebookLM",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_upload_failed": {
+    "message": "Upload failed: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_absorb_btn": {
+    "message": "Capture Page"
+  },
+  "ingest_processing": {
+    "message": "Processing..."
+  },
+  "ingest_ingest_btn": {
+    "message": "Ingest"
+  },
+  "ingest_drop_zone": {
+    "message": "Drop file here or click to select"
+  },
+  "ingest_drop_zone_hint": {
+    "message": "Supports .txt .md .csv .json .html"
+  },
+  "ingest_send_btn": {
+    "message": "Send to NotebookLM"
+  },
+  "ingest_history_label": {
+    "message": "Recent Ingestions"
+  },
+  "ingest_progress_prepare": {
+    "message": "Selecting Notebook..."
+  },
+  "ingest_progress_send": {
+    "message": "Sending content..."
+  },
+  "ingest_progress_processing": {
+    "message": "NotebookLM processing..."
+  },
+  "ingest_progress_done": {
+    "message": "Done"
+  },
+  "ingest_progress_failed": {
+    "message": "Ingest failed: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "notebook_select_placeholder": {
+    "message": "Select Notebook..."
+  },
+  "notebook_readonly": {
+    "message": " (read-only)"
+  },
+  "notebook_create_title": {
+    "message": "Create new Notebook"
+  },
+  "notebook_new_placeholder": {
+    "message": "New Notebook name..."
+  },
+  "notebook_create_btn": {
+    "message": "Create"
+  },
+  "notebook_cancel": {
+    "message": "Cancel"
+  },
+  "sources_manage_title": {
+    "message": "Manage Sources"
+  },
+  "sources_modal_title": {
+    "message": "Sources — $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_loading": {
+    "message": "Loading..."
+  },
+  "sources_empty": {
+    "message": "No sources in this Notebook"
+  },
+  "sources_untitled": {
+    "message": "(untitled)"
+  },
+  "sources_delete_confirm": {
+    "message": "Confirm?"
+  },
+  "sources_delete_btn": {
+    "message": "Del"
+  },
+  "sources_cancel": {
+    "message": "Cancel"
+  },
+  "sources_rename_title": {
+    "message": "Rename"
+  },
+  "sources_rename_btn": {
+    "message": "Edit"
+  },
+  "sources_rename_failed": {
+    "message": "Rename failed: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_delete_title": {
+    "message": "Delete source"
+  },
+  "sources_delete_failed": {
+    "message": "Delete failed: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_count": {
+    "message": "$1 sources",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_refresh": {
+    "message": "Refresh"
+  },
+  "sources_refreshing": {
+    "message": "..."
+  },
+  "chat_empty": {
+    "message": "Select a Notebook to start chatting"
+  },
+  "chat_thinking": {
+    "message": "Thinking..."
+  },
+  "chat_no_notebook": {
+    "message": "Please select a Notebook first"
+  },
+  "chat_no_reply": {
+    "message": "(no reply)"
+  },
+  "chat_placeholder": {
+    "message": "Type a message..."
+  },
+  "options_subtitle": {
+    "message": "Settings & Environment Check"
+  },
+  "options_theme": {
+    "message": "Theme"
+  },
+  "options_theme_light": {
+    "message": "Light"
+  },
+  "options_theme_dark": {
+    "message": "Dark"
+  },
+  "options_theme_system": {
+    "message": "System"
+  },
+  "options_step1_title": {
+    "message": "Install Python packages"
+  },
+  "options_step2_title": {
+    "message": "Log in to NotebookLM"
+  },
+  "options_step2_hint": {
+    "message": "Opens browser for Google OAuth login"
+  },
+  "options_step3_title": {
+    "message": "Start backend server"
+  },
+  "options_step4_title": {
+    "message": "Backend URL"
+  },
+  "options_save_btn": {
+    "message": "Save"
+  },
+  "options_saved_btn": {
+    "message": "Saved"
+  },
+  "options_check_btn": {
+    "message": "Recheck"
+  },
+  "options_checking": {
+    "message": "Checking..."
+  },
+  "options_all_good": {
+    "message": "All set, ready to use"
+  },
+  "popup_open_hint": {
+    "message": "Open the side panel from the browser toolbar"
+  },
+  "popup_chrome_hint": {
+    "message": "Chrome menu → More tools → Side panel, or reload this extension."
+  },
+  "context_menu_send": {
+    "message": "Send to NotebookLM"
+  },
+  "notification_sent": {
+    "message": "Sent \"$1\"",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "editor_modal_title": {
+    "message": "Edit Captured Content"
+  },
+  "editor_title_placeholder": {
+    "message": "Title..."
+  },
+  "editor_content_placeholder": {
+    "message": "Enter or edit content (Markdown supported)..."
+  },
+  "editor_char_count": {
+    "message": "$1 chars",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "editor_submit_hint": {
+    "message": "to send"
+  },
+  "editor_bold_placeholder": {
+    "message": "bold text"
+  },
+  "editor_italic_placeholder": {
+    "message": "italic text"
+  },
+  "editor_heading_placeholder": {
+    "message": "Heading"
+  },
+  "editor_list_placeholder": {
+    "message": "list item"
+  },
+  "editor_quote_placeholder": {
+    "message": "quote"
+  },
+  "editor_edit_btn": {
+    "message": "Edit"
+  },
+  "bg_error_prefix": {
+    "message": "Backend error $1: $2",
+    "placeholders": { "1": { "content": "$1" }, "2": { "content": "$2" } }
+  },
+  "bg_no_tab": {
+    "message": "Cannot find current tab"
+  }
+}

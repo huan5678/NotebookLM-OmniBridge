@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import { bgSend } from "~lib/messaging"
+import { t } from "~lib/i18n"
 import type { Notebook } from "~lib/types"
 
 interface Props {
@@ -7,9 +8,10 @@ interface Props {
   current: string | null
   onChange: (id: string) => void
   onRefresh?: () => void
+  children?: React.ReactNode
 }
 
-export function NotebookSelector({ notebooks, current, onChange, onRefresh }: Props) {
+export function NotebookSelector({ notebooks, current, onChange, onRefresh, children }: Props) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState("")
 
@@ -29,45 +31,46 @@ export function NotebookSelector({ notebooks, current, onChange, onRefresh }: Pr
 
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ display: "flex", gap: 4 }}>
+      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
         <select
           value={current ?? ""}
           onChange={(e) => {
             if (e.target.value === "__new__") {
               setNewName("")
-              // Focus will shift to input below
             } else {
               onChange(e.target.value)
             }
           }}
           style={{
             flex: 1,
+            minWidth: 0,
             padding: 8,
-            background: "#0f3460",
-            color: "#eee",
-            border: "1px solid #e94560",
+            background: "var(--bg-input)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-accent)",
             borderRadius: 6,
             fontSize: 13,
           }}
         >
           <option value="" disabled>
-            選擇 Notebook...
+            {t("notebook_select_placeholder")}
           </option>
           {notebooks.map((nb) => (
             <option key={nb.id} value={nb.id}>
               {nb.title}
-              {nb.is_owner ? "" : " (唯讀)"}
+              {nb.is_owner ? "" : t("notebook_readonly")}
             </option>
           ))}
         </select>
         <button
           onClick={() => setNewName((v) => (v === "" ? " " : ""))}
-          title="建立新 Notebook"
+          title={t("notebook_create_title")}
           style={{
+            flexShrink: 0,
             padding: "4px 8px",
-            background: "#0f3460",
-            color: "#e94560",
-            border: "1px solid #e94560",
+            background: "var(--bg-input)",
+            color: "var(--accent)",
+            border: "1px solid var(--accent)",
             borderRadius: 6,
             cursor: "pointer",
             fontSize: 14,
@@ -76,6 +79,7 @@ export function NotebookSelector({ notebooks, current, onChange, onRefresh }: Pr
         >
           +
         </button>
+        {children}
       </div>
 
       {newName !== "" && (
@@ -84,14 +88,14 @@ export function NotebookSelector({ notebooks, current, onChange, onRefresh }: Pr
             autoFocus
             value={newName.trim() ? newName : ""}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="新 Notebook 名稱..."
+            placeholder={t("notebook_new_placeholder")}
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
             style={{
               flex: 1,
               padding: 6,
-              background: "#0f3460",
-              color: "#eee",
-              border: "1px solid #533483",
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border)",
               borderRadius: 4,
               fontSize: 12,
             }}
@@ -101,29 +105,29 @@ export function NotebookSelector({ notebooks, current, onChange, onRefresh }: Pr
             disabled={creating || !newName.trim()}
             style={{
               padding: "4px 10px",
-              background: "#533483",
-              color: "#fff",
+              background: "var(--accent)",
+              color: "var(--accent-text)",
               border: "none",
               borderRadius: 4,
               cursor: "pointer",
               fontSize: 12,
             }}
           >
-            {creating ? "..." : "建立"}
+            {creating ? "..." : t("notebook_create_btn")}
           </button>
           <button
             onClick={() => setNewName("")}
             style={{
               padding: "4px 8px",
               background: "transparent",
-              color: "#888",
-              border: "1px solid #444",
+              color: "var(--text-muted)",
+              border: "1px solid var(--border)",
               borderRadius: 4,
               cursor: "pointer",
               fontSize: 12,
             }}
           >
-            取消
+            {t("notebook_cancel")}
           </button>
         </div>
       )}

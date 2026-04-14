@@ -1,0 +1,309 @@
+{
+  "ext_description": {
+    "message": "將網頁內容傳送到 NotebookLM"
+  },
+  "sidepanel_loading": {
+    "message": "載入中..."
+  },
+  "sidepanel_notebook_count": {
+    "message": "$1 個 Notebook",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sidepanel_click_reconnect": {
+    "message": "點擊重新連線"
+  },
+  "sidepanel_connected": {
+    "message": "● 已連接"
+  },
+  "sidepanel_disconnected": {
+    "message": "● 未連接"
+  },
+  "sidepanel_error_no_backend": {
+    "message": "無法連接後端伺服器"
+  },
+  "sidepanel_error_backend_cmd": {
+    "message": "請啟動後端：cd backend && uvicorn server.main:app --port 8000"
+  },
+  "sidepanel_retry": {
+    "message": "重試連線"
+  },
+  "sidepanel_not_logged_in": {
+    "message": "尚未登入 NotebookLM"
+  },
+  "sidepanel_login_cmd": {
+    "message": "請在終端機執行：python3.11 -m notebooklm login"
+  },
+  "sidepanel_login_done": {
+    "message": "已完成登入"
+  },
+  "sidepanel_tab_ingest": {
+    "message": "吸取"
+  },
+  "sidepanel_tab_chat": {
+    "message": "對話"
+  },
+  "ingest_status_default": {
+    "message": "選擇 Notebook → 吸取頁面 → 發送"
+  },
+  "ingest_absorbing": {
+    "message": "吸取中..."
+  },
+  "ingest_absorbed_selection": {
+    "message": "已取得選取文字 ($1 字)",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_absorbed_page": {
+    "message": "已取得頁面內容 ($1 字)",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_absorb_failed": {
+    "message": "吸取失敗: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_no_notebook": {
+    "message": "請先選擇 Notebook"
+  },
+  "ingest_ingesting": {
+    "message": "攝入中..."
+  },
+  "ingest_sent": {
+    "message": "已發送至 NotebookLM"
+  },
+  "ingest_ingest_failed": {
+    "message": "攝入失敗: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_reading_file": {
+    "message": "讀取 $1...",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_file_sent": {
+    "message": "已發送「$1」至 NotebookLM",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_upload_failed": {
+    "message": "上傳失敗: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "ingest_absorb_btn": {
+    "message": "吸取當前頁面"
+  },
+  "ingest_processing": {
+    "message": "處理中..."
+  },
+  "ingest_ingest_btn": {
+    "message": "攝入"
+  },
+  "ingest_drop_zone": {
+    "message": "拖放檔案至此 或 點擊選擇"
+  },
+  "ingest_drop_zone_hint": {
+    "message": "支援 .txt .md .csv .json .html"
+  },
+  "ingest_send_btn": {
+    "message": "發送至 NotebookLM"
+  },
+  "ingest_history_label": {
+    "message": "最近攝入"
+  },
+  "ingest_progress_prepare": {
+    "message": "選取 Notebook..."
+  },
+  "ingest_progress_send": {
+    "message": "傳送內容..."
+  },
+  "ingest_progress_processing": {
+    "message": "NotebookLM 處理中..."
+  },
+  "ingest_progress_done": {
+    "message": "完成"
+  },
+  "ingest_progress_failed": {
+    "message": "攝入失敗: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "notebook_select_placeholder": {
+    "message": "選擇 Notebook..."
+  },
+  "notebook_readonly": {
+    "message": " (唯讀)"
+  },
+  "notebook_create_title": {
+    "message": "建立新 Notebook"
+  },
+  "notebook_new_placeholder": {
+    "message": "新 Notebook 名稱..."
+  },
+  "notebook_create_btn": {
+    "message": "建立"
+  },
+  "notebook_cancel": {
+    "message": "取消"
+  },
+  "sources_manage_title": {
+    "message": "管理來源"
+  },
+  "sources_modal_title": {
+    "message": "來源管理 — $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_loading": {
+    "message": "載入中..."
+  },
+  "sources_empty": {
+    "message": "此 Notebook 尚無來源"
+  },
+  "sources_untitled": {
+    "message": "(無標題)"
+  },
+  "sources_delete_confirm": {
+    "message": "確定?"
+  },
+  "sources_delete_btn": {
+    "message": "刪"
+  },
+  "sources_cancel": {
+    "message": "取消"
+  },
+  "sources_rename_title": {
+    "message": "重新命名"
+  },
+  "sources_rename_btn": {
+    "message": "改"
+  },
+  "sources_rename_failed": {
+    "message": "重新命名失敗: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_delete_title": {
+    "message": "刪除來源"
+  },
+  "sources_delete_failed": {
+    "message": "刪除失敗: $1",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_count": {
+    "message": "$1 個來源",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "sources_refresh": {
+    "message": "重新整理"
+  },
+  "sources_refreshing": {
+    "message": "..."
+  },
+  "chat_empty": {
+    "message": "選擇 Notebook 後開始對話"
+  },
+  "chat_thinking": {
+    "message": "思考中..."
+  },
+  "chat_no_notebook": {
+    "message": "請先選擇 Notebook"
+  },
+  "chat_no_reply": {
+    "message": "(無回覆)"
+  },
+  "chat_placeholder": {
+    "message": "輸入訊息..."
+  },
+  "options_subtitle": {
+    "message": "設定與環境檢查"
+  },
+  "options_theme": {
+    "message": "主題"
+  },
+  "options_theme_light": {
+    "message": "Light"
+  },
+  "options_theme_dark": {
+    "message": "Dark"
+  },
+  "options_theme_system": {
+    "message": "System"
+  },
+  "options_step1_title": {
+    "message": "安裝 Python 套件"
+  },
+  "options_step2_title": {
+    "message": "登入 NotebookLM"
+  },
+  "options_step2_hint": {
+    "message": "會開啟瀏覽器進行 Google OAuth 登入"
+  },
+  "options_step3_title": {
+    "message": "啟動後端伺服器"
+  },
+  "options_step4_title": {
+    "message": "後端 URL 設定"
+  },
+  "options_save_btn": {
+    "message": "儲存"
+  },
+  "options_saved_btn": {
+    "message": "已儲存"
+  },
+  "options_check_btn": {
+    "message": "重新檢查"
+  },
+  "options_checking": {
+    "message": "檢查中..."
+  },
+  "options_all_good": {
+    "message": "全部就緒，可以使用了"
+  },
+  "popup_open_hint": {
+    "message": "請從瀏覽器右上角開啟側邊面板"
+  },
+  "popup_chrome_hint": {
+    "message": "Chrome 選單 → 更多工具 → 側邊面板，或重新載入此擴充功能。"
+  },
+  "context_menu_send": {
+    "message": "傳送至 NotebookLM"
+  },
+  "notification_sent": {
+    "message": "已傳送「$1」",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "editor_modal_title": {
+    "message": "編輯擷取內容"
+  },
+  "editor_title_placeholder": {
+    "message": "標題..."
+  },
+  "editor_content_placeholder": {
+    "message": "輸入或編輯內容（支援 Markdown）..."
+  },
+  "editor_char_count": {
+    "message": "$1 字",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "editor_submit_hint": {
+    "message": "送出"
+  },
+  "editor_bold_placeholder": {
+    "message": "粗體文字"
+  },
+  "editor_italic_placeholder": {
+    "message": "斜體文字"
+  },
+  "editor_heading_placeholder": {
+    "message": "標題"
+  },
+  "editor_list_placeholder": {
+    "message": "清單項目"
+  },
+  "editor_quote_placeholder": {
+    "message": "引用文字"
+  },
+  "editor_edit_btn": {
+    "message": "編輯"
+  },
+  "bg_error_prefix": {
+    "message": "後端錯誤 $1: $2",
+    "placeholders": { "1": { "content": "$1" }, "2": { "content": "$2" } }
+  },
+  "bg_no_tab": {
+    "message": "找不到當前標籤頁"
+  }
+}

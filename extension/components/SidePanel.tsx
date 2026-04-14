@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { bgSend } from "~lib/messaging"
+import { t } from "~lib/i18n"
 import type { Notebook } from "~lib/types"
 import { NotebookSelector } from "./NotebookSelector"
+import { SourceManagerModal } from "./SourceManagerModal"
 import { IngestTab } from "./IngestTab"
 import { ChatTab } from "./ChatTab"
 
@@ -10,8 +12,8 @@ const RETRY_INTERVAL = 10000
 const retryBtnStyle: React.CSSProperties = {
   alignSelf: "flex-start",
   padding: "4px 12px",
-  background: "#e94560",
-  color: "#fff",
+  background: "var(--accent)",
+  color: "var(--accent-text)",
   border: "none",
   borderRadius: 4,
   cursor: "pointer",
@@ -25,7 +27,6 @@ export function SidePanel() {
   const [connected, setConnected] = useState(false)
   const [authenticated, setAuthenticated] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -38,7 +39,6 @@ export function SidePanel() {
       }>({ type: "NOTEBOOKLM_STATUS" })
       setConnected(data.connected)
       setAuthenticated(data.authenticated !== false)
-      setError(data.message || null)
 
       if (data.connected && data.authenticated !== false) {
         const nbData = await bgSend<{ notebooks: Notebook[] }>({
@@ -51,7 +51,6 @@ export function SidePanel() {
       }
     } catch (err) {
       setConnected(false)
-      setError("無法連接後端伺服器")
     } finally {
       setLoading(false)
     }
@@ -59,6 +58,8 @@ export function SidePanel() {
 
   useEffect(() => {
     loadStatus()
+    // Inject selection watcher into the active tab
+    bgSend({ type: "SETUP_SELECTION_WATCHER" }).catch(() => {})
   }, [])
 
   // Auto-retry when disconnected
@@ -74,8 +75,8 @@ export function SidePanel() {
   }, [])
 
   const tabs = [
-    { id: "ingest" as const, label: "吸取" },
-    { id: "chat" as const, label: "對話" },
+    { id: "ingest" as const, label: t("sidepanel_tab_ingest") },
+    { id: "chat" as const, label: t("sidepanel_tab_chat") },
   ]
 
   return (
@@ -83,14 +84,14 @@ export function SidePanel() {
       display: "flex",
       flexDirection: "column",
       height: "100vh",
-      background: "#1a1a2e",
-      color: "#eee",
+      background: "var(--bg-primary)",
+      color: "var(--text-primary)",
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
       {/* Header */}
       <div style={{
         padding: "12px 16px",
-        borderBottom: "1px solid #2a2a4a",
+        borderBottom: "1px solid var(--border)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -99,8 +100,8 @@ export function SidePanel() {
           <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
             NotebookLM Omni-Bridge
           </h1>
-          <p style={{ fontSize: 10, color: "#666", margin: "2px 0 0" }}>
-            {loading ? "載入中..." : `${notebooks.length} 個 Notebook`}
+          <p style={{ fontSize: 10, color: "var(--text-muted)", margin: "2px 0 0" }}>
+            {loading ? t("sidepanel_loading") : t("sidepanel_notebook_count", String(notebooks.length))}
           </p>
         </div>
         <span
@@ -110,13 +111,13 @@ export function SidePanel() {
             padding: "2px 8px",
             borderRadius: 12,
             fontSize: 11,
-            background: connected ? "#1b4332" : "#4a1b1b",
-            color: connected ? "#52b788" : "#f07070",
+            background: connected ? "var(--success-bg)" : "var(--error-bg)",
+            color: connected ? "var(--success-text)" : "var(--error-text)",
             cursor: "pointer",
           }}
-          title="點擊重新連線"
+          title={t("sidepanel_click_reconnect")}
         >
-          {connected ? "● 已連接" : "● 未連接"}
+          {connected ? t("sidepanel_connected") : t("sidepanel_disconnected")}
         </span>
       </div>
 
@@ -124,40 +125,40 @@ export function SidePanel() {
       {!loading && !connected && (
         <div style={{
           padding: "10px 16px",
-          background: "#4a1b1b",
-          color: "#f07070",
+          background: "var(--error-bg)",
+          color: "var(--error-text)",
           fontSize: 12,
           display: "flex",
           flexDirection: "column",
           gap: 6,
         }}>
-          <span>無法連接後端伺服器</span>
-          <span style={{ color: "#aaa", fontSize: 11 }}>
-            請啟動後端：cd backend && uvicorn server.main:app --port 8000
+          <span>{t("sidepanel_error_no_backend")}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>
+            {t("sidepanel_error_backend_cmd")}
           </span>
-          <button onClick={loadStatus} style={retryBtnStyle}>重試連線</button>
+          <button onClick={loadStatus} style={retryBtnStyle}>{t("sidepanel_retry")}</button>
         </div>
       )}
       {!loading && connected && !authenticated && (
         <div style={{
           padding: "10px 16px",
-          background: "#4a3b1b",
-          color: "#f0c070",
+          background: "var(--warning-bg)",
+          color: "var(--warning-text)",
           fontSize: 12,
           display: "flex",
           flexDirection: "column",
           gap: 6,
         }}>
-          <span>尚未登入 NotebookLM</span>
-          <span style={{ color: "#aaa", fontSize: 11 }}>
-            請在終端機執行：python3.11 -m notebooklm login
+          <span>{t("sidepanel_not_logged_in")}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>
+            {t("sidepanel_login_cmd")}
           </span>
-          <button onClick={loadStatus} style={retryBtnStyle}>已完成登入</button>
+          <button onClick={loadStatus} style={retryBtnStyle}>{t("sidepanel_login_done")}</button>
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -166,9 +167,9 @@ export function SidePanel() {
               flex: 1,
               padding: 10,
               background: "transparent",
-              color: activeTab === tab.id ? "#e94560" : "#888",
+              color: activeTab === tab.id ? "var(--accent)" : "var(--text-muted)",
               border: "none",
-              borderBottom: activeTab === tab.id ? "2px solid #e94560" : "2px solid transparent",
+              borderBottom: activeTab === tab.id ? "2px solid var(--accent)" : "2px solid transparent",
               cursor: "pointer",
               fontSize: 13,
               fontWeight: activeTab === tab.id ? 600 : 400,
@@ -186,7 +187,12 @@ export function SidePanel() {
           current={currentNotebook}
           onChange={handleSelectNotebook}
           onRefresh={loadStatus}
-        />
+        >
+          <SourceManagerModal
+            notebookId={currentNotebook}
+            notebookTitle={notebooks.find((n) => n.id === currentNotebook)?.title ?? ""}
+          />
+        </NotebookSelector>
         {activeTab === "ingest" ? (
           <IngestTab currentNotebook={currentNotebook} />
         ) : (

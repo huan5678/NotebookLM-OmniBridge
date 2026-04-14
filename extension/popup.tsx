@@ -1,16 +1,17 @@
-import React from "react"
+import React, { useEffect } from "react"
+import "~style.css"
+import { initTheme } from "~lib/theme"
+import { t } from "~lib/i18n"
 
-/**
- * Popup 只在 setPanelBehavior 未生效時作為 fallback 顯示。
- * 正常情況下，點擊 icon 會直接開啟 side panel。
- */
 function Popup() {
+  useEffect(() => { initTheme() }, [])
+
   return (
     <div style={{
       width: 260,
       padding: 16,
-      background: "#1a1a2e",
-      color: "#eee",
+      background: "var(--bg-primary)",
+      color: "var(--text-primary)",
       fontFamily: "system-ui, -apple-system, sans-serif",
       display: "flex",
       flexDirection: "column",
@@ -19,12 +20,11 @@ function Popup() {
       <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
         NotebookLM Omni-Bridge
       </h1>
-      <p style={{ fontSize: 12, color: "#aaa", margin: 0 }}>
-        請從瀏覽器右上角開啟側邊面板
+      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
+        {t("popup_open_hint")}
       </p>
-      <p style={{ fontSize: 11, color: "#666", margin: 0 }}>
-        Chrome 選單 → 更多工具 → 側邊面板，
-        或重新載入此擴充功能。
+      <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>
+        {t("popup_chrome_hint")}
       </p>
     </div>
   )

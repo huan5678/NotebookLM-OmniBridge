@@ -1,26 +1,52 @@
 import React, { useState, useEffect, useCallback, useRef } from "react"
 import { bgSend } from "~lib/messaging"
 import { addToHistory, getHistory, type IngestRecord } from "~lib/history"
-import type { PageContent } from "~lib/types"
+import { t } from "~lib/i18n"
+import type { PageContent, IngestProgressMessage } from "~lib/types"
+import { IngestEditorModal } from "./IngestEditorModal"
 
 const ACCEPTED_TYPES = ".txt,.md,.csv,.json,.html,.xml,.log"
 
 interface Props {
   currentNotebook: string | null
+  onLoadingChange?: (loading: boolean) => void
 }
 
-export function IngestTab({ currentNotebook }: Props) {
+export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
   const [pageContent, setPageContent] = useState<PageContent | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState("選擇 Notebook → 吸取頁面 → 發送")
+  const [loadingState, setLoadingState] = useState(false)
+  const setLoading = useCallback((v: boolean) => {
+    setLoadingState(v)
+    onLoadingChange?.(v)
+  }, [onLoadingChange])
+  const [status, setStatus] = useState(t("ingest_status_default"))
   const [urlInput, setUrlInput] = useState("")
   const [urlMode, setUrlMode] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [history, setHistory] = useState<IngestRecord[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Progress bar state
+  const [ingestStep, setIngestStep] = useState(0)
+  const [ingestError, setIngestError] = useState<string | null>(null)
+
+  // Editor modal state
+  const [editorOpen, setEditorOpen] = useState(false)
+
   useEffect(() => {
     getHistory().then(setHistory)
+  }, [])
+
+  // Listen for progress updates from background
+  useEffect(() => {
+    const handler = (msg: IngestProgressMessage) => {
+      if (msg.type !== "NOTEBOOKLM_INGEST_PROGRESS") return
+      setIngestStep(msg.step)
+      if (msg.error) setIngestError(msg.error)
+      else setIngestError(null)
+    }
+    chrome.runtime.onMessage.addListener(handler)
+    return () => chrome.runtime.onMessage.removeListener(handler)
   }, [])
 
   async function recordIngest(title: string, url?: string) {
@@ -29,19 +55,24 @@ export function IngestTab({ currentNotebook }: Props) {
     setHistory(await getHistory())
   }
 
+  function resetProgress() {
+    setIngestStep(0)
+    setIngestError(null)
+  }
+
   const handleAbsorb = useCallback(async () => {
     setLoading(true)
-    setStatus("吸取中...")
+    setStatus(t("ingest_absorbing"))
     try {
       const data = await bgSend<PageContent>({ type: "ABSORB_PAGE" })
       setPageContent(data)
       setStatus(
         data.selectedText
-          ? `已取得選取文字 (${data.selectedText.length} 字)`
-          : `已取得頁面內容 (${data.fullText.length} 字)`
+          ? t("ingest_absorbed_selection", String(data.selectedText.length))
+          : t("ingest_absorbed_page", String(data.fullText.length))
       )
     } catch (err) {
-      setStatus(`吸取失敗: ${err}`)
+      setStatus(t("ingest_absorb_failed", String(err)))
     } finally {
       setLoading(false)
     }
@@ -50,70 +81,65 @@ export function IngestTab({ currentNotebook }: Props) {
   const handleIngestUrl = useCallback(async () => {
     if (!urlInput.trim()) return
     if (!currentNotebook) {
-      setStatus("請先選擇 Notebook")
+      setStatus(t("ingest_no_notebook"))
       return
     }
     setLoading(true)
-    setStatus("攝入中...")
+    resetProgress()
+    setStatus(t("ingest_ingesting"))
     try {
       await bgSend({
         type: "NOTEBOOKLM_INGEST",
         url: urlInput.trim(),
         notebookId: currentNotebook,
       })
-      setStatus("已發送至 NotebookLM")
+      setStatus(t("ingest_sent"))
       await recordIngest(urlInput.trim(), urlInput.trim())
       setUrlInput("")
     } catch (err) {
-      setStatus(`攝入失敗: ${err}`)
+      setStatus(t("ingest_ingest_failed", String(err)))
     } finally {
       setLoading(false)
     }
   }, [urlInput, currentNotebook])
 
-  const handleIngestPage = useCallback(async () => {
-    if (!pageContent) return
+  // Submit from editor modal
+  const handleEditorSubmit = useCallback(async (content: string, title: string) => {
     if (!currentNotebook) {
-      setStatus("請先選擇 Notebook")
+      setStatus(t("ingest_no_notebook"))
       return
     }
     setLoading(true)
-    setStatus("攝入中...")
+    resetProgress()
+    setStatus(t("ingest_ingesting"))
     try {
-      const text = pageContent.selectedText || pageContent.fullText
-      if (text) {
-        await bgSend({
-          type: "NOTEBOOKLM_INGEST",
-          text,
-          title: pageContent.title,
-          notebookId: currentNotebook,
-        })
-      } else {
-        await bgSend({
-          type: "NOTEBOOKLM_INGEST",
-          url: pageContent.url,
-          notebookId: currentNotebook,
-        })
-      }
-      setStatus("已發送至 NotebookLM")
-      await recordIngest(pageContent.title, pageContent.url)
+      await bgSend({
+        type: "NOTEBOOKLM_INGEST",
+        text: content,
+        title,
+        notebookId: currentNotebook,
+      })
+      setStatus(t("ingest_sent"))
+      await recordIngest(title, pageContent?.url)
       setPageContent(null)
+      setEditorOpen(false)
     } catch (err) {
-      setStatus(`攝入失敗: ${err}`)
+      setStatus(t("ingest_ingest_failed", String(err)))
     } finally {
       setLoading(false)
     }
-  }, [pageContent, currentNotebook])
+  }, [currentNotebook, pageContent])
 
   const handleFileUpload = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return
     if (!currentNotebook) {
-      setStatus("請先選擇 Notebook")
+      setStatus(t("ingest_no_notebook"))
       return
     }
     const file = files[0]
     setLoading(true)
-    setStatus(`讀取 ${file.name}...`)
+    resetProgress()
+    setStatus(t("ingest_reading_file", file.name))
     try {
       const text = await file.text()
       await bgSend({
@@ -122,10 +148,10 @@ export function IngestTab({ currentNotebook }: Props) {
         title: file.name,
         notebookId: currentNotebook,
       })
-      setStatus(`已發送「${file.name}」至 NotebookLM`)
+      setStatus(t("ingest_file_sent", file.name))
       await recordIngest(file.name)
     } catch (err) {
-      setStatus(`上傳失敗: ${err}`)
+      setStatus(t("ingest_upload_failed", String(err)))
     } finally {
       setLoading(false)
       setDragging(false)
@@ -133,9 +159,18 @@ export function IngestTab({ currentNotebook }: Props) {
     }
   }, [currentNotebook])
 
+  // Content to show in preview / pass to editor
   const previewText = pageContent
     ? (pageContent.selectedText || pageContent.fullText)
     : ""
+
+  const STEP_LABELS = [
+    "",
+    t("ingest_progress_prepare"),
+    t("ingest_progress_send"),
+    t("ingest_progress_processing"),
+    t("ingest_progress_done"),
+  ]
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
@@ -143,28 +178,28 @@ export function IngestTab({ currentNotebook }: Props) {
       <div style={{ display: "flex", gap: 6 }}>
         <button
           onClick={handleAbsorb}
-          disabled={loading}
+          disabled={loadingState}
           style={{
             flex: 1,
             padding: 8,
-            background: "#e94560",
-            color: "#fff",
+            background: "var(--accent)",
+            color: "var(--accent-text)",
             border: "none",
             borderRadius: 6,
-            cursor: loading ? "not-allowed" : "pointer",
+            cursor: loadingState ? "not-allowed" : "pointer",
             fontSize: 13,
-            opacity: loading ? 0.6 : 1,
+            opacity: loadingState ? 0.6 : 1,
           }}
         >
-          {loading ? "處理中..." : "吸取當前頁面"}
+          {loadingState ? t("ingest_processing") : t("ingest_absorb_btn")}
         </button>
         <button
           onClick={() => setUrlMode((v) => !v)}
           style={{
             padding: "8px 12px",
-            background: "#0f3460",
-            color: "#e94560",
-            border: "1px solid #e94560",
+            background: "var(--bg-input)",
+            color: "var(--accent)",
+            border: "1px solid var(--accent)",
             borderRadius: 6,
             cursor: "pointer",
             fontSize: 13,
@@ -185,26 +220,26 @@ export function IngestTab({ currentNotebook }: Props) {
             style={{
               flex: 1,
               padding: 8,
-              background: "#0f3460",
-              color: "#eee",
-              border: "1px solid #e94560",
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-accent)",
               borderRadius: 6,
               fontSize: 13,
             }}
           />
           <button
             onClick={handleIngestUrl}
-            disabled={loading || !urlInput.trim()}
+            disabled={loadingState || !urlInput.trim()}
             style={{
               padding: "8px 12px",
-              background: "#e94560",
-              color: "#fff",
+              background: "var(--accent)",
+              color: "var(--accent-text)",
               border: "none",
               borderRadius: 6,
               cursor: "pointer",
             }}
           >
-            攝入
+            {t("ingest_ingest_btn")}
           </button>
         </div>
       )}
@@ -217,19 +252,19 @@ export function IngestTab({ currentNotebook }: Props) {
         onClick={() => fileInputRef.current?.click()}
         style={{
           padding: "12px 10px",
-          border: dragging ? "2px dashed #e94560" : "2px dashed #2a2a4a",
+          border: dragging ? "2px dashed var(--accent)" : "2px dashed var(--border)",
           borderRadius: 8,
           textAlign: "center",
           cursor: "pointer",
-          background: dragging ? "#e9456010" : "transparent",
+          background: dragging ? "var(--bg-tertiary)" : "transparent",
           transition: "all 0.2s",
         }}
       >
-        <div style={{ fontSize: 12, color: dragging ? "#e94560" : "#666" }}>
-          拖放檔案至此 或 點擊選擇
+        <div style={{ fontSize: 12, color: dragging ? "var(--accent)" : "var(--text-muted)" }}>
+          {t("ingest_drop_zone")}
         </div>
-        <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
-          支援 .txt .md .csv .json .html
+        <div style={{ fontSize: 10, color: "var(--text-disabled)", marginTop: 2 }}>
+          {t("ingest_drop_zone_hint")}
         </div>
         <input
           ref={fileInputRef}
@@ -240,60 +275,136 @@ export function IngestTab({ currentNotebook }: Props) {
         />
       </div>
 
-      {/* Page preview */}
+      {/* Page preview — compact, click to edit in modal */}
       {pageContent && (
-        <div style={{
-          overflow: "auto",
-          background: "#0f3460",
-          borderRadius: 8,
-          padding: 10,
-          border: "1px solid #533483",
-          display: "flex",
-          flexDirection: "column",
-        }}>
-          <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>
-            {pageContent.title}
+        <div
+          style={{
+            overflow: "hidden",
+            background: "var(--bg-secondary)",
+            borderRadius: 8,
+            padding: 10,
+            border: "1px solid var(--border)",
+            cursor: "pointer",
+          }}
+          onClick={() => setEditorOpen(true)}
+        >
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 4,
+          }}>
+            <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
+              {pageContent.title}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditorOpen(true) }}
+              style={{
+                padding: "2px 8px",
+                background: "var(--accent)",
+                color: "var(--accent-text)",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 11,
+                flexShrink: 0,
+              }}
+            >
+              {t("editor_edit_btn")}
+            </button>
+          </div>
+          {pageContent.selectedText && (
+            <div style={{
+              fontSize: 10,
+              color: "var(--accent)",
+              marginBottom: 4,
+            }}>
+              {t("ingest_absorbed_selection", String(pageContent.selectedText.length))}
+            </div>
+          )}
+          <div style={{
+            fontSize: 11,
+            color: "var(--text-secondary)",
+            whiteSpace: "pre-wrap",
+            maxHeight: 80,
+            overflow: "hidden",
+            lineHeight: 1.4,
+          }}>
+            {previewText.slice(0, 300)}
+            {previewText.length > 300 && "..."}
+          </div>
+        </div>
+      )}
+
+      {/* Editor Modal */}
+      <IngestEditorModal
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        title={pageContent?.title ?? ""}
+        initialContent={previewText}
+        onSubmit={handleEditorSubmit}
+        loading={loadingState}
+      />
+
+      {/* Progress bar */}
+      {loadingState && ingestStep > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ display: "flex", gap: 4, marginBottom: 6, justifyContent: "center" }}>
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: ingestStep >= s
+                    ? (ingestError ? "var(--error-text)" : "var(--accent)")
+                    : "var(--border)",
+                  transition: "background 0.3s ease",
+                }}
+              />
+            ))}
           </div>
           <div style={{
-            fontSize: 12,
-            color: "#ccc",
-            whiteSpace: "pre-wrap",
-            maxHeight: 180,
-            overflow: "auto",
+            fontSize: 11,
+            color: ingestError ? "var(--error-text)" : "var(--accent)",
+            textAlign: "center",
+            transition: "color 0.2s",
           }}>
-            {previewText.slice(0, 2000)}
-            {previewText.length > 2000 && "..."}
+            {ingestError
+              ? t("ingest_progress_failed", ingestError)
+              : (STEP_LABELS[ingestStep] || t("ingest_progress_prepare"))}
           </div>
-          <button
-            onClick={handleIngestPage}
-            disabled={loading || !currentNotebook}
-            style={{
-              marginTop: 8,
-              width: "100%",
-              padding: 8,
-              background: "#533483",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            發送至 NotebookLM
-          </button>
+          <div style={{
+            marginTop: 6,
+            height: 3,
+            background: "var(--border)",
+            borderRadius: 2,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%",
+              width: `${(Math.max(0, ingestStep) / 4) * 100}%`,
+              background: ingestError ? "var(--error-text)" : "var(--accent)",
+              borderRadius: 2,
+              transition: "width 0.4s ease",
+            }} />
+          </div>
         </div>
       )}
 
       {/* Status */}
-      <div style={{ fontSize: 11, color: "#888", textAlign: "center" }}>
-        {status}
-      </div>
+      {!loadingState && (
+        <div style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
+          {status}
+        </div>
+      )}
 
       {/* History */}
       {history.length > 0 && (
         <div style={{ marginTop: "auto" }}>
-          <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
-            最近攝入
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
+            {t("ingest_history_label")}
           </div>
           <div style={{
             maxHeight: 120,
@@ -305,9 +416,9 @@ export function IngestTab({ currentNotebook }: Props) {
             {history.slice(0, 10).map((r) => (
               <div key={r.id} style={{
                 fontSize: 11,
-                color: "#888",
+                color: "var(--text-secondary)",
                 padding: "3px 6px",
-                background: "#16213e",
+                background: "var(--bg-secondary)",
                 borderRadius: 4,
                 display: "flex",
                 justifyContent: "space-between",
@@ -321,7 +432,7 @@ export function IngestTab({ currentNotebook }: Props) {
                 }}>
                   {r.title}
                 </span>
-                <span style={{ color: "#555", flexShrink: 0 }}>
+                <span style={{ color: "var(--text-disabled)", flexShrink: 0 }}>
                   {formatTime(r.timestamp)}
                 </span>
               </div>
@@ -336,8 +447,9 @@ export function IngestTab({ currentNotebook }: Props) {
 function formatTime(iso: string): string {
   const d = new Date(iso)
   const now = new Date()
+  const locale = chrome.i18n.getUILanguage()
   if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
   }
-  return d.toLocaleDateString("zh-TW", { month: "short", day: "numeric" })
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric" })
 }

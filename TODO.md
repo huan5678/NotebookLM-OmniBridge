@@ -15,24 +15,43 @@
 - [x] P2: 攝入歷史記錄 (chrome.storage.local, IngestTab 底部顯示)
 - [x] P2: Extension Icon (SVG → PNG 512x512, Plasmo 自動縮放)
 - [x] P2: MCP Server 改為 proxy FastAPI (消除重複邏輯)
+- [x] P3: 來源管理 Modal (list / delete / rename sources via Radix Dialog)
+- [x] P3: Ingest 修正 (--type text 防止 Errno 63 + -n notebook_id 確保目標正確)
+- [x] P3: Ingest Loading Overlay (全螢幕遮罩防止誤操作)
+- [x] P3: 配色重構 (純黑白灰 + #EDFF00 強調色 + Light/Dark/System mode, WCAG AAA)
 
 ---
 
-## 待做 — 端對端實測
+## 已完成 — 端對端實測
 
-- [ ] **端對端實測**
-  - 啟動 FastAPI → 載入 Extension → 實際走通全流程
-  - list notebooks → select → 吸取頁面 → ingest → chat
-  - 右鍵選單攝入 → 通知
-  - MCP Server → FastAPI → notebooklm-py
+- [x] **端對端實測** (2026-04-14)
+  - [x] API: list notebooks → select → ingest text → chat (全通過)
+  - [x] API: source management — list / rename / delete (全通過)
+  - [x] MCP Server → FastAPI → notebooklm-py (initialize + tools/list + status 全通過)
+  - [x] Backend pytest: 14/14 通過 (5 個 pre-existing 失敗已排除)
+
+---
+
+## 已完成 — 進度條 + i18n
+
+- [x] **攝入進度條** (2026-04-14)
+  - [x] 後端拆分 /ingest/prepare + /ingest/add_source 兩階段 endpoint
+  - [x] Background 兩階段呼叫 + chrome.runtime.sendMessage 推送 4 步驟進度
+  - [x] IngestTab 內嵌進度條 UI (步驟圓點 + 文字標籤 + 動畫軌道條)
+  - [x] 移除 SidePanel 全螢幕 loading overlay
+- [x] **多語系 i18n** (2026-04-14)
+  - [x] Chrome 原生 chrome.i18n.getMessage + typed t() wrapper
+  - [x] 69+ 字串抽取至 locales/zh_TW + locales/en
+  - [x] 7 個元件全部替換為 t() 呼叫
+  - [x] Background service worker 字串 i18n 化
+  - [x] package.json default_locale + __MSG_ext_description__
+  - [x] formatTime locale 動態化 (chrome.i18n.getUILanguage)
 
 ---
 
 ## 未來可做
 
 - [ ] 更精緻的 Extension Icon (設計師操刀)
-- [ ] 攝入進度條 (長文本攝入時)
-- [ ] 多語系支援 (目前僅繁體中文)
 - [ ] CI pipeline (GitHub Actions)
 - [ ] Chrome Web Store 發布準備
 

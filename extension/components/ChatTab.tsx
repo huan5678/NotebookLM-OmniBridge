@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { marked } from "marked"
 import { bgSend } from "~lib/messaging"
+import { t } from "~lib/i18n"
 import type { ChatMessage } from "~lib/types"
 import { PromptInputBox } from "~components/ui/ai-prompt-box"
 
@@ -23,7 +24,7 @@ export function ChatTab({ currentNotebook }: Props) {
   const handleSend = useCallback(async (text: string, files?: File[]) => {
     if (!text.trim() && (!files || files.length === 0)) return
     if (!currentNotebook) {
-      setError("請先選擇 Notebook")
+      setError(t("chat_no_notebook"))
       return
     }
 
@@ -65,7 +66,7 @@ export function ChatTab({ currentNotebook }: Props) {
         const assistantMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: result.response || "（無回覆）",
+          content: result.response || t("chat_no_reply"),
         }
         setMessages((prev) => [...prev, assistantMsg])
       }
@@ -81,13 +82,17 @@ export function ChatTab({ currentNotebook }: Props) {
       {/* Messages */}
       <div className="flex-1 overflow-auto flex flex-col gap-2 py-1">
         {messages.length === 0 && (
-          <p className="text-gray-500 text-sm text-center mt-10">
-            選擇 Notebook 後開始對話
+          <p style={{ color: "var(--text-muted)" }} className="text-sm text-center mt-10">
+            {t("chat_empty")}
           </p>
         )}
         {messages.map((msg) =>
           msg.role === "user" ? (
-            <div key={msg.id} className="self-end max-w-[85%] px-3 py-2 rounded-2xl bg-[#e94560] text-white text-sm whitespace-pre-wrap break-words">
+            <div
+              key={msg.id}
+              className="self-end max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words"
+              style={{ background: "var(--accent)", color: "var(--accent-text)" }}
+            >
               {msg.content}
             </div>
           ) : (
@@ -95,8 +100,11 @@ export function ChatTab({ currentNotebook }: Props) {
           )
         )}
         {loading && (
-          <div className="self-start max-w-[90%] px-3 py-2 rounded-2xl bg-[#0f3460] text-gray-400 text-sm">
-            <span className="animate-pulse">思考中...</span>
+          <div
+            className="self-start max-w-[90%] px-3 py-2 rounded-2xl text-sm"
+            style={{ background: "var(--bg-tertiary)", color: "var(--text-muted)" }}
+          >
+            <span className="animate-pulse">{t("chat_thinking")}</span>
           </div>
         )}
         <div ref={bottomRef} />
@@ -104,14 +112,14 @@ export function ChatTab({ currentNotebook }: Props) {
 
       {/* Error */}
       {error && (
-        <div className="text-red-400 text-xs px-1">{error}</div>
+        <div style={{ color: "var(--error-text)" }} className="text-xs px-1">{error}</div>
       )}
 
       {/* Prompt Input */}
       <PromptInputBox
         onSend={handleSend}
         isLoading={loading}
-        placeholder="輸入訊息..."
+        placeholder={t("chat_placeholder")}
       />
 
       <style>{markdownCSS}</style>
@@ -123,7 +131,8 @@ function MarkdownBubble({ content }: { content: string }) {
   const html = useMemo(() => marked.parse(content) as string, [content])
   return (
     <div
-      className="md-bubble self-start max-w-[90%] px-3 py-2 rounded-2xl bg-[#0f3460] text-gray-200 text-sm break-words"
+      className="md-bubble self-start max-w-[90%] px-3 py-2 rounded-2xl text-sm break-words"
+      style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
@@ -136,7 +145,7 @@ const markdownCSS = `
   margin: 8px 0 4px;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 .md-bubble h1 { font-size: 16px; }
 .md-bubble h2 { font-size: 15px; }
@@ -146,15 +155,15 @@ const markdownCSS = `
 }
 .md-bubble li { margin: 2px 0; }
 .md-bubble code {
-  background: #1a1a2e;
+  background: var(--bg-secondary);
   padding: 1px 5px;
   border-radius: 3px;
   font-size: 12px;
   font-family: "SF Mono", Menlo, monospace;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 .md-bubble pre {
-  background: #1a1a2e;
+  background: var(--bg-secondary);
   padding: 8px 10px;
   border-radius: 6px;
   overflow-x: auto;
@@ -166,14 +175,14 @@ const markdownCSS = `
   font-size: 12px;
 }
 .md-bubble a {
-  color: #e94560;
+  color: var(--accent);
   text-decoration: underline;
 }
 .md-bubble blockquote {
-  border-left: 3px solid #533483;
+  border-left: 3px solid var(--border-accent);
   margin: 6px 0;
   padding: 2px 10px;
-  color: #aaa;
+  color: var(--text-secondary);
 }
 .md-bubble table {
   border-collapse: collapse;
@@ -182,19 +191,19 @@ const markdownCSS = `
   width: 100%;
 }
 .md-bubble th, .md-bubble td {
-  border: 1px solid #2a2a4a;
+  border: 1px solid var(--border);
   padding: 4px 8px;
   text-align: left;
 }
 .md-bubble th {
-  background: #1a1a2e;
-  color: #aaa;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   font-weight: 600;
 }
-.md-bubble strong { color: #fff; }
+.md-bubble strong { color: var(--text-primary); }
 .md-bubble hr {
   border: none;
-  border-top: 1px solid #2a2a4a;
+  border-top: 1px solid var(--border);
   margin: 8px 0;
 }
 `
