@@ -40,6 +40,14 @@ tests/**/*.js
 .plasmo/
 *.plasmo.png
 
+# Claude Code / local tooling
+.claude/
+.agents/
+skills-lock.json
+
+# Remotion video project (tracked separately)
+video/
+
 # Logs
 *.log
 
