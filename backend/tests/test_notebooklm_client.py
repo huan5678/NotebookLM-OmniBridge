@@ -75,7 +75,7 @@ class TestNotebookLMClient:
 
         await client.add_source('Some text content', title='My Title')
 
-        mock.assert_called_once_with(['source', 'add', 'Some text content', '--title', 'My Title'])
+        mock.assert_called_once_with(['source', 'add', 'Some text content', '-n', 'test-id', '--title', 'My Title'])
 
     @pytest.mark.asyncio
     async def test_chat_success(self, client):

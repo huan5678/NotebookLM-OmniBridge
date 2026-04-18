@@ -3,10 +3,13 @@ NotebookLM Client - Async wrapper around notebooklm-py CLI.
 """
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
+
+logger = logging.getLogger("omni-bridge")
 
 DEFAULT_STORAGE = Path.home() / '.notebooklm' / 'storage_state.json'
 
@@ -16,6 +19,16 @@ class CLIResult:
     returncode: int
     stdout: str
     stderr: str
+
+
+@dataclass
+class Source:
+    id: str
+    title: str
+    type: str
+    url: Optional[str] = None
+    status: str = "ready"
+    created_at: str = ""
 
 
 @dataclass
@@ -93,18 +106,70 @@ class NotebookLMClient:
             self._current_notebook = notebook_id
         return result.returncode == 0
 
-    async def add_source(self, content: str, title: Optional[str] = None) -> bool:
+    async def add_source(self, content: str, title: Optional[str] = None, source_type: Optional[str] = None) -> bool:
         """Add a source to current notebook.
 
         content can be a URL, file path, or inline text.
-        notebooklm-py auto-detects the type.
+        notebooklm-py auto-detects the type unless source_type is given.
+        source_type: "url", "text", "file", "youtube"
         """
         if not self._current_notebook:
             raise ValueError("No notebook selected. Call use_notebook() first.")
 
-        args = ['source', 'add', content]
+        args = ['source', 'add', content, '-n', self._current_notebook]
+        if source_type:
+            args.extend(['--type', source_type])
         if title:
             args.extend(['--title', title])
+        result = await self._run_cli(args)
+        logger.warning(f"[CLI] source add returncode={result.returncode}, stdout={result.stdout[:200]!r}, stderr={result.stderr[:200]!r}")
+        return result.returncode == 0
+
+    async def list_sources(self, notebook_id: Optional[str] = None) -> list[Source]:
+        """List all sources in a notebook."""
+        nb_id = notebook_id or self._current_notebook
+        if not nb_id:
+            raise ValueError("No notebook selected. Call use_notebook() first.")
+
+        args = ['source', 'list', '--json', '-n', nb_id]
+        result = await self._run_cli(args)
+        if result.returncode != 0:
+            return []
+
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return []
+
+        return [
+            Source(
+                id=s['id'],
+                title=s.get('title', ''),
+                type=s.get('type', 'unknown'),
+                url=s.get('url'),
+                status=s.get('status', 'ready'),
+                created_at=s.get('created_at', ''),
+            )
+            for s in data.get('sources', [])
+        ]
+
+    async def delete_source(self, source_id: str, notebook_id: Optional[str] = None) -> bool:
+        """Delete a source from a notebook."""
+        nb_id = notebook_id or self._current_notebook
+        if not nb_id:
+            raise ValueError("No notebook selected. Call use_notebook() first.")
+
+        args = ['source', 'delete', source_id, '-y', '-n', nb_id]
+        result = await self._run_cli(args)
+        return result.returncode == 0
+
+    async def rename_source(self, source_id: str, new_title: str, notebook_id: Optional[str] = None) -> bool:
+        """Rename a source in a notebook."""
+        nb_id = notebook_id or self._current_notebook
+        if not nb_id:
+            raise ValueError("No notebook selected. Call use_notebook() first.")
+
+        args = ['source', 'rename', source_id, new_title, '-n', nb_id]
         result = await self._run_cli(args)
         return result.returncode == 0
 
@@ -113,7 +178,7 @@ class NotebookLMClient:
         if not self._current_notebook:
             raise ValueError("No notebook selected. Call use_notebook() first.")
 
-        result = await self._run_cli(['ask', message])
+        result = await self._run_cli(['ask', message, '-n', self._current_notebook])
         if result.returncode != 0:
             raise RuntimeError(f"Chat failed: {result.stderr}")
         return result.stdout.strip()
