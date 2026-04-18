@@ -29,3 +29,10 @@ export async function addToHistory(record: Omit<IngestRecord, "id" | "timestamp"
 export async function clearHistory(): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEY]: [] })
 }
+
+export async function removeFromHistory(id: string): Promise<void> {
+  const history = await getHistory()
+  await chrome.storage.local.set({
+    [STORAGE_KEY]: history.filter((r) => r.id !== id),
+  })
+}

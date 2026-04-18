@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react"
+import { X } from "lucide-react"
 import { bgSend } from "~lib/messaging"
-import { addToHistory, getHistory, type IngestRecord } from "~lib/history"
+import { addToHistory, getHistory, removeFromHistory, type IngestRecord } from "~lib/history"
 import { t } from "~lib/i18n"
 import type { PageContent, IngestProgressMessage } from "~lib/types"
-import { IngestEditorModal } from "./IngestEditorModal"
+// Editor is now a popup window, not an inline modal
 
 const ACCEPTED_TYPES = ".txt,.md,.csv,.json,.html,.xml,.log"
 
@@ -30,8 +31,11 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
   const [ingestStep, setIngestStep] = useState(0)
   const [ingestError, setIngestError] = useState<string | null>(null)
 
-  // Editor modal state
-  const [editorOpen, setEditorOpen] = useState(false)
+  // Open editor as popup window
+  const openEditor = useCallback(async (content: string, title: string) => {
+    await chrome.storage.session.set({ editorContent: content, editorTitle: title })
+    chrome.windows.create({ url: "tabs/editor.html", type: "popup", width: 560, height: 520 })
+  }, [])
 
   useEffect(() => {
     getHistory().then(setHistory)
@@ -42,8 +46,16 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
     const handler = (msg: IngestProgressMessage) => {
       if (msg.type !== "NOTEBOOKLM_INGEST_PROGRESS") return
       setIngestStep(msg.step)
-      if (msg.error) setIngestError(msg.error)
-      else setIngestError(null)
+      if (msg.error) {
+        setIngestError(msg.error)
+        return
+      }
+      setIngestError(null)
+      // Ingest succeeded (broadcast fires for sidebar ingests and editor-popup ingests alike).
+      // Drop the absorbed page preview so the card disappears from the sidebar.
+      if (msg.step === 4 && msg.done) {
+        setPageContent(null)
+      }
     }
     chrome.runtime.onMessage.addListener(handler)
     return () => chrome.runtime.onMessage.removeListener(handler)
@@ -54,6 +66,11 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
     await addToHistory({ title, url, notebookId: currentNotebook })
     setHistory(await getHistory())
   }
+
+  const handleDeleteHistory = useCallback(async (id: string) => {
+    await removeFromHistory(id)
+    setHistory(await getHistory())
+  }, [])
 
   function resetProgress() {
     setIngestStep(0)
@@ -102,33 +119,6 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
       setLoading(false)
     }
   }, [urlInput, currentNotebook])
-
-  // Submit from editor modal
-  const handleEditorSubmit = useCallback(async (content: string, title: string) => {
-    if (!currentNotebook) {
-      setStatus(t("ingest_no_notebook"))
-      return
-    }
-    setLoading(true)
-    resetProgress()
-    setStatus(t("ingest_ingesting"))
-    try {
-      await bgSend({
-        type: "NOTEBOOKLM_INGEST",
-        text: content,
-        title,
-        notebookId: currentNotebook,
-      })
-      setStatus(t("ingest_sent"))
-      await recordIngest(title, pageContent?.url)
-      setPageContent(null)
-      setEditorOpen(false)
-    } catch (err) {
-      setStatus(t("ingest_ingest_failed", String(err)))
-    } finally {
-      setLoading(false)
-    }
-  }, [currentNotebook, pageContent])
 
   const handleFileUpload = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -286,19 +276,29 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
             border: "1px solid var(--border)",
             cursor: "pointer",
           }}
-          onClick={() => setEditorOpen(true)}
+          onClick={() => openEditor(previewText, pageContent?.title ?? "")}
         >
           <div style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: 6,
             marginBottom: 4,
           }}>
-            <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
+            <span style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 12,
+              color: "var(--text-primary)",
+              fontWeight: 500,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}>
               {pageContent.title}
             </span>
             <button
-              onClick={(e) => { e.stopPropagation(); setEditorOpen(true) }}
+              onClick={(e) => { e.stopPropagation(); openEditor(previewText, pageContent?.title ?? "") }}
               style={{
                 padding: "2px 8px",
                 background: "var(--accent)",
@@ -311,6 +311,27 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
               }}
             >
               {t("editor_edit_btn")}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setPageContent(null); setStatus(t("ingest_status_default")) }}
+              title={t("ingest_dismiss_preview")}
+              aria-label={t("ingest_dismiss_preview")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 22,
+                height: 22,
+                padding: 0,
+                background: "transparent",
+                color: "var(--text-muted)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <X size={12} />
             </button>
           </div>
           {pageContent.selectedText && (
@@ -335,16 +356,6 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
           </div>
         </div>
       )}
-
-      {/* Editor Modal */}
-      <IngestEditorModal
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        title={pageContent?.title ?? ""}
-        initialContent={previewText}
-        onSubmit={handleEditorSubmit}
-        loading={loadingState}
-      />
 
       {/* Progress bar */}
       {loadingState && ingestStep > 0 && (
@@ -421,8 +432,8 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
                 background: "var(--bg-secondary)",
                 borderRadius: 4,
                 display: "flex",
-                justifyContent: "space-between",
-                gap: 8,
+                alignItems: "center",
+                gap: 6,
               }}>
                 <span style={{
                   overflow: "hidden",
@@ -435,6 +446,27 @@ export function IngestTab({ currentNotebook, onLoadingChange }: Props) {
                 <span style={{ color: "var(--text-disabled)", flexShrink: 0 }}>
                   {formatTime(r.timestamp)}
                 </span>
+                <button
+                  onClick={() => handleDeleteHistory(r.id)}
+                  title={t("ingest_history_remove")}
+                  aria-label={t("ingest_history_remove")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 18,
+                    height: 18,
+                    padding: 0,
+                    background: "transparent",
+                    color: "var(--text-muted)",
+                    border: "none",
+                    borderRadius: 3,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <X size={12} />
+                </button>
               </div>
             ))}
           </div>

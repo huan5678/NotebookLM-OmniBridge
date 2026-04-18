@@ -28,10 +28,10 @@
     "message": "重試連線"
   },
   "sidepanel_not_logged_in": {
-    "message": "尚未登入 NotebookLM"
+    "message": "尚未登入 Google"
   },
   "sidepanel_login_cmd": {
-    "message": "請在終端機執行：python3.11 -m notebooklm login"
+    "message": "請在 Chrome 登入 Google 帳號，並開啟 notebooklm.google.com 一次"
   },
   "sidepanel_login_done": {
     "message": "已完成登入"
@@ -207,6 +207,49 @@
   "chat_placeholder": {
     "message": "輸入訊息..."
   },
+  "chat_placeholder_multiline": {
+    "message": "輸入訊息...（⌘/Ctrl + Enter 送出，Enter 換行）"
+  },
+  "chat_float_title": {
+    "message": "對話"
+  },
+  "chat_add_source": {
+    "message": "加入來源"
+  },
+  "chat_add_source_title": {
+    "message": "Chat 回覆"
+  },
+  "chat_switch_notebook": {
+    "message": "切換 Notebook"
+  },
+  "chat_switch_confirm": {
+    "message": "切換 Notebook 會清除目前對話紀錄，確定嗎？"
+  },
+  "chat_voice_start": {
+    "message": "開始語音輸入"
+  },
+  "chat_voice_stop": {
+    "message": "停止語音輸入"
+  },
+  "chat_voice_unsupported": {
+    "message": "此瀏覽器不支援語音輸入"
+  },
+  "chat_voice_error": {
+    "message": "語音輸入錯誤：$ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+  "ingest_history_remove": {
+    "message": "從歷史移除"
+  },
+  "ingest_dismiss_preview": {
+    "message": "關閉擷取內容"
+  },
+  "chat_copy": {
+    "message": "複製回覆"
+  },
+  "chat_copied": {
+    "message": "已複製"
+  },
   "options_subtitle": {
     "message": "設定與環境檢查"
   },
@@ -222,35 +265,23 @@
   "options_theme_system": {
     "message": "System"
   },
-  "options_step1_title": {
-    "message": "安裝 Python 套件"
+  "options_auth_status": {
+    "message": "NotebookLM 登入狀態"
   },
-  "options_step2_title": {
-    "message": "登入 NotebookLM"
+  "options_auth_ok": {
+    "message": "已登入 Google"
   },
-  "options_step2_hint": {
-    "message": "會開啟瀏覽器進行 Google OAuth 登入"
+  "options_auth_fail": {
+    "message": "尚未登入"
   },
-  "options_step3_title": {
-    "message": "啟動後端伺服器"
-  },
-  "options_step4_title": {
-    "message": "後端 URL 設定"
-  },
-  "options_save_btn": {
-    "message": "儲存"
-  },
-  "options_saved_btn": {
-    "message": "已儲存"
+  "options_auth_hint": {
+    "message": "請在 Chrome 登入 Google 帳號，然後開啟 notebooklm.google.com 一次"
   },
   "options_check_btn": {
     "message": "重新檢查"
   },
   "options_checking": {
     "message": "檢查中..."
-  },
-  "options_all_good": {
-    "message": "全部就緒，可以使用了"
   },
   "popup_open_hint": {
     "message": "請從瀏覽器右上角開啟側邊面板"
@@ -299,6 +330,21 @@
   "editor_edit_btn": {
     "message": "編輯"
   },
+  "studio_title": { "message": "工作室" },
+  "studio_generate": { "message": "生成" },
+  "studio_generating": { "message": "生成中..." },
+  "studio_artifacts": { "message": "已生成的成品" },
+  "studio_empty": { "message": "尚無成品" },
+  "studio_type_audio": { "message": "Audio 播客" },
+  "studio_type_report": { "message": "報告" },
+  "studio_type_quiz": { "message": "測驗" },
+  "studio_type_flashcards": { "message": "閃卡" },
+  "studio_type_mind_map": { "message": "心智圖" },
+  "studio_type_video": { "message": "Video" },
+  "studio_status_completed": { "message": "完成" },
+  "studio_status_in_progress": { "message": "生成中" },
+  "studio_status_failed": { "message": "失敗" },
+  "studio_delete_confirm": { "message": "確定刪除？" },
   "bg_error_prefix": {
     "message": "後端錯誤 $1: $2",
     "placeholders": { "1": { "content": "$1" }, "2": { "content": "$2" } }

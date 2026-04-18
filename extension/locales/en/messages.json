@@ -28,10 +28,10 @@
     "message": "Retry"
   },
   "sidepanel_not_logged_in": {
-    "message": "Not logged in to NotebookLM"
+    "message": "Not logged in to Google"
   },
   "sidepanel_login_cmd": {
-    "message": "Run in terminal: python3.11 -m notebooklm login"
+    "message": "Sign in to Google in Chrome, then visit notebooklm.google.com once"
   },
   "sidepanel_login_done": {
     "message": "Login completed"
@@ -207,6 +207,49 @@
   "chat_placeholder": {
     "message": "Type a message..."
   },
+  "chat_placeholder_multiline": {
+    "message": "Type a message... (⌘/Ctrl + Enter to send, Enter for newline)"
+  },
+  "chat_float_title": {
+    "message": "Chat"
+  },
+  "chat_add_source": {
+    "message": "Add to source"
+  },
+  "chat_add_source_title": {
+    "message": "Chat Response"
+  },
+  "chat_switch_notebook": {
+    "message": "Switch Notebook"
+  },
+  "chat_switch_confirm": {
+    "message": "Switching Notebook will clear the current conversation. Continue?"
+  },
+  "chat_voice_start": {
+    "message": "Start voice input"
+  },
+  "chat_voice_stop": {
+    "message": "Stop voice input"
+  },
+  "chat_voice_unsupported": {
+    "message": "Voice input not supported in this browser"
+  },
+  "chat_voice_error": {
+    "message": "Voice input error: $ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+  "ingest_history_remove": {
+    "message": "Remove from history"
+  },
+  "ingest_dismiss_preview": {
+    "message": "Dismiss captured content"
+  },
+  "chat_copy": {
+    "message": "Copy reply"
+  },
+  "chat_copied": {
+    "message": "Copied"
+  },
   "options_subtitle": {
     "message": "Settings & Environment Check"
   },
@@ -222,35 +265,23 @@
   "options_theme_system": {
     "message": "System"
   },
-  "options_step1_title": {
-    "message": "Install Python packages"
+  "options_auth_status": {
+    "message": "NotebookLM Login Status"
   },
-  "options_step2_title": {
-    "message": "Log in to NotebookLM"
+  "options_auth_ok": {
+    "message": "Logged in to Google"
   },
-  "options_step2_hint": {
-    "message": "Opens browser for Google OAuth login"
+  "options_auth_fail": {
+    "message": "Not logged in"
   },
-  "options_step3_title": {
-    "message": "Start backend server"
-  },
-  "options_step4_title": {
-    "message": "Backend URL"
-  },
-  "options_save_btn": {
-    "message": "Save"
-  },
-  "options_saved_btn": {
-    "message": "Saved"
+  "options_auth_hint": {
+    "message": "Sign in to Google in Chrome, then visit notebooklm.google.com once"
   },
   "options_check_btn": {
     "message": "Recheck"
   },
   "options_checking": {
     "message": "Checking..."
-  },
-  "options_all_good": {
-    "message": "All set, ready to use"
   },
   "popup_open_hint": {
     "message": "Open the side panel from the browser toolbar"
@@ -299,6 +330,21 @@
   "editor_edit_btn": {
     "message": "Edit"
   },
+  "studio_title": { "message": "Studio" },
+  "studio_generate": { "message": "Generate" },
+  "studio_generating": { "message": "Generating..." },
+  "studio_artifacts": { "message": "Generated Artifacts" },
+  "studio_empty": { "message": "No artifacts yet" },
+  "studio_type_audio": { "message": "Audio Podcast" },
+  "studio_type_report": { "message": "Report" },
+  "studio_type_quiz": { "message": "Quiz" },
+  "studio_type_flashcards": { "message": "Flashcards" },
+  "studio_type_mind_map": { "message": "Mind Map" },
+  "studio_type_video": { "message": "Video" },
+  "studio_status_completed": { "message": "Completed" },
+  "studio_status_in_progress": { "message": "Generating" },
+  "studio_status_failed": { "message": "Failed" },
+  "studio_delete_confirm": { "message": "Delete this artifact?" },
   "bg_error_prefix": {
     "message": "Backend error $1: $2",
     "placeholders": { "1": { "content": "$1" }, "2": { "content": "$2" } }
