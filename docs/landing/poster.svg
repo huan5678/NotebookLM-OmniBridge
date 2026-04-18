@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <radialGradient id="g1" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#EDFF00" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#EDFF00" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="#0a0a0a"/>
+  <rect width="1920" height="1080" fill="url(#g1)"/>
+  <g transform="translate(960 540)">
+    <circle r="80" fill="#EDFF00"/>
+    <polygon points="-24,-36 40,0 -24,36" fill="#0a0a0a"/>
+  </g>
+  <text x="960" y="720" text-anchor="middle" font-family="Inter, sans-serif" font-size="44" font-weight="700" fill="#f5f5f5">NotebookLM Omni-Bridge — 90s Demo</text>
+  <text x="960" y="770" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#a3a3a3">Click play to watch</text>
+</svg>

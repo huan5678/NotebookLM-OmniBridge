@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NotebookLM Omni-Bridge — 把整個網路，接進你的第二大腦</title>
+    <meta
+      name="description"
+      content="一個 Chrome 擴充套件，讓你在任何網頁上按一下，就能把內容送進 Google NotebookLM 並直接對話。"
+    />
+    <meta property="og:title" content="NotebookLM Omni-Bridge" />
+    <meta property="og:description" content="把整個網路，接進你的第二大腦。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-0: #0a0a0a;
+        --bg-1: #141414;
+        --bg-2: #1f1f1f;
+        --bg-3: #262626;
+        --border: #2e2e2e;
+        --border-accent: #525252;
+        --text-1: #f5f5f5;
+        --text-2: #a3a3a3;
+        --text-3: #737373;
+        --text-4: #525252;
+        --accent: #edff00;
+        --accent-dim: #d4e600;
+        --accent-ink: #0a0a0a;
+        --success: #4ade80;
+        --error: #f87171;
+        --radius: 14px;
+        --radius-sm: 8px;
+        --maxw: 1120px;
+        --shadow-glow: 0 0 0 1px rgba(237, 255, 0, 0.2),
+          0 10px 40px -10px rgba(237, 255, 0, 0.15);
+        --font-sans: "Inter", "Noto Sans TC", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--bg-0);
+        color: var(--text-1);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+      }
+
+      ::selection {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: var(--accent-dim);
+      }
+
+      /* ================== Layout ================== */
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      section {
+        padding: 96px 0;
+        position: relative;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        padding: 6px 12px;
+        border: 1px solid rgba(237, 255, 0, 0.25);
+        border-radius: 999px;
+        background: rgba(237, 255, 0, 0.04);
+      }
+      .eyebrow::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-sans);
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+
+      h2.section-title {
+        font-size: clamp(32px, 4vw, 48px);
+        font-weight: 700;
+        line-height: 1.1;
+        margin: 20px 0 12px;
+      }
+
+      p.section-lead {
+        color: var(--text-2);
+        font-size: clamp(15px, 1.3vw, 17px);
+        max-width: 640px;
+        margin: 0 0 48px;
+      }
+
+      /* ================== Top nav ================== */
+      nav.top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        backdrop-filter: saturate(160%) blur(12px);
+        -webkit-backdrop-filter: saturate(160%) blur(12px);
+        background: rgba(10, 10, 10, 0.65);
+        border-bottom: 1px solid transparent;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+      nav.top.scrolled {
+        border-bottom-color: var(--border);
+        background: rgba(10, 10, 10, 0.85);
+      }
+      nav.top .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 14px;
+        padding-bottom: 14px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text-1);
+      }
+      .brand-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        background: var(--accent);
+        box-shadow: 0 0 16px rgba(237, 255, 0, 0.5);
+        position: relative;
+      }
+      .brand-dot::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border-radius: 3px;
+        background: var(--accent-ink);
+      }
+      nav.top .links {
+        display: flex;
+        gap: 28px;
+      }
+      nav.top .links a {
+        font-size: 13px;
+        color: var(--text-2);
+      }
+      nav.top .links a:hover {
+        color: var(--text-1);
+      }
+      @media (max-width: 720px) {
+        nav.top .links {
+          display: none;
+        }
+      }
+
+      /* ================== Hero ================== */
+      section.hero {
+        padding-top: 180px;
+        padding-bottom: 120px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .hero-bg::before {
+        content: "";
+        position: absolute;
+        inset: -20%;
+        background:
+          radial-gradient(600px circle at 20% 20%, rgba(237, 255, 0, 0.14), transparent 60%),
+          radial-gradient(800px circle at 80% 40%, rgba(237, 255, 0, 0.06), transparent 60%);
+      }
+      .hero-bg .grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 75%);
+        -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 75%);
+      }
+
+      .hero-inner {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 64px;
+        align-items: center;
+      }
+      @media (max-width: 960px) {
+        .hero-inner {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      h1.headline {
+        font-size: clamp(44px, 6vw, 76px);
+        font-weight: 800;
+        line-height: 1.02;
+        letter-spacing: -0.035em;
+        margin: 24px 0 20px;
+      }
+      h1.headline .hl {
+        color: var(--accent);
+        position: relative;
+        display: inline-block;
+      }
+      h1.headline .hl::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 4px;
+        height: 14px;
+        background: rgba(237, 255, 0, 0.18);
+        z-index: -1;
+        border-radius: 4px;
+      }
+      p.sub {
+        color: var(--text-2);
+        font-size: clamp(16px, 1.35vw, 19px);
+        max-width: 540px;
+        margin: 0 0 36px;
+      }
+
+      .cta-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 22px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: transform 0.15s ease, box-shadow 0.15s ease,
+          background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 10px 30px -10px rgba(237, 255, 0, 0.4);
+      }
+      .btn-primary:hover {
+        background: var(--accent-dim);
+        transform: translateY(-1px);
+        color: var(--accent-ink);
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-1);
+        border-color: var(--border-accent);
+      }
+      .btn-ghost:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .meta-row {
+        display: flex;
+        gap: 28px;
+        margin-top: 36px;
+        flex-wrap: wrap;
+        color: var(--text-3);
+        font-size: 13px;
+      }
+      .meta-row span b {
+        color: var(--text-1);
+        font-weight: 700;
+        font-family: var(--font-mono);
+      }
+
+      /* Hero mock panel */
+      .mock {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        box-shadow: var(--shadow-glow);
+        overflow: hidden;
+        position: relative;
+      }
+      .mock .mock-chrome {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-0);
+      }
+      .mock .mock-chrome .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--bg-3);
+      }
+      .mock .mock-chrome .url {
+        flex: 1;
+        margin-left: 10px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--bg-2);
+        color: var(--text-3);
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        font-family: var(--font-mono);
+      }
+      .mock-body {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 400px;
+      }
+      .mock-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+      }
+      .mock-title {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .mock-title small {
+        display: block;
+        font-weight: 400;
+        font-size: 10px;
+        color: var(--text-3);
+        margin-top: 2px;
+      }
+      .badge-pill {
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 10px;
+        background: rgba(74, 222, 128, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(74, 222, 128, 0.2);
+      }
+      .mock-select {
+        display: flex;
+        gap: 6px;
+      }
+      .mock-select .sel {
+        flex: 1;
+        padding: 8px 10px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--text-1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .mock-select .sel .chev {
+        color: var(--text-3);
+      }
+      .mock-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .mock-btn {
+        flex: 1;
+        padding: 9px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+      }
+      .mock-btn-primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+      .mock-btn-outline {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+      }
+      .mock-drop {
+        padding: 14px;
+        border: 2px dashed var(--border);
+        border-radius: 8px;
+        text-align: center;
+        color: var(--text-3);
+        font-size: 11px;
+      }
+      .mock-progress {
+        margin-top: 4px;
+      }
+      .mock-progress .dots {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        margin-bottom: 8px;
+      }
+      .mock-progress .dot-p {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      .mock-progress .dot-p.off {
+        background: var(--border);
+      }
+      .mock-progress .label {
+        text-align: center;
+        font-size: 11px;
+        color: var(--accent);
+      }
+      .mock-progress .track {
+        margin-top: 6px;
+        height: 3px;
+        background: var(--border);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .mock-progress .fill {
+        height: 100%;
+        width: 75%;
+        background: var(--accent);
+        border-radius: 2px;
+      }
+      .mock-history {
+        margin-top: auto;
+        border-top: 1px solid var(--border);
+        padding-top: 10px;
+      }
+      .mock-history .ttl {
+        font-size: 10px;
+        color: var(--text-3);
+        margin-bottom: 6px;
+      }
+      .mock-history .row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-2);
+        background: var(--bg-2);
+        border-radius: 4px;
+        padding: 4px 8px;
+        margin-bottom: 3px;
+      }
+
+      /* ================== Pain ================== */
+      .pain-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 840px) {
+        .pain-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .pain-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 28px;
+        background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+        position: relative;
+      }
+      .pain-card .num {
+        font-family: var(--font-mono);
+        color: var(--text-4);
+        font-size: 12px;
+        margin-bottom: 18px;
+      }
+      .pain-card h3 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        line-height: 1.3;
+      }
+      .pain-card p {
+        color: var(--text-2);
+        font-size: 14px;
+        margin: 0;
+      }
+      .pain-card .strike {
+        text-decoration: line-through;
+        color: var(--text-4);
+      }
+
+      /* ================== Features ================== */
+      .feat-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 960px) {
+        .feat-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .feat-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .feat-card {
+        grid-column: span 2;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 28px;
+        background: var(--bg-1);
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .feat-card:hover {
+        border-color: var(--border-accent);
+        transform: translateY(-2px);
+      }
+      .feat-card.large {
+        grid-column: span 3;
+      }
+      @media (max-width: 960px) {
+        .feat-card,
+        .feat-card.large {
+          grid-column: span 2;
+        }
+      }
+      @media (max-width: 560px) {
+        .feat-card,
+        .feat-card.large {
+          grid-column: span 1;
+        }
+      }
+      .feat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(237, 255, 0, 0.08);
+        color: var(--accent);
+        margin-bottom: 18px;
+      }
+      .feat-icon svg {
+        width: 20px;
+        height: 20px;
+      }
+      .feat-card h3 {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      .feat-card p {
+        color: var(--text-2);
+        font-size: 14px;
+        margin: 0;
+        line-height: 1.6;
+      }
+
+      /* ================== Architecture ================== */
+      .arch-wrap {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        padding: 40px;
+        position: relative;
+        overflow: hidden;
+      }
+      .arch-wrap::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(400px circle at 50% 0%, rgba(237, 255, 0, 0.06), transparent 60%);
+        pointer-events: none;
+      }
+      .arch-diagram {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        align-items: center;
+        position: relative;
+      }
+      @media (max-width: 720px) {
+        .arch-diagram {
+          grid-template-columns: 1fr;
+        }
+      }
+      .arch-node {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 18px;
+        background: var(--bg-2);
+        text-align: center;
+      }
+      .arch-node.primary {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(237, 255, 0, 0.2),
+          0 0 30px -10px rgba(237, 255, 0, 0.4);
+      }
+      .arch-node .ico {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+      .arch-node h4 {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      .arch-node p {
+        color: var(--text-3);
+        font-size: 11px;
+        margin: 0;
+        font-family: var(--font-mono);
+      }
+      .arch-arrow {
+        text-align: center;
+        color: var(--text-4);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+      .arch-arrow b {
+        color: var(--accent);
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 600;
+      }
+      @media (max-width: 720px) {
+        .arch-arrow {
+          padding: 8px 0;
+        }
+      }
+
+      .arch-note {
+        margin-top: 28px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 720px) {
+        .arch-note {
+          grid-template-columns: 1fr;
+        }
+      }
+      .arch-note .item {
+        font-size: 12px;
+        color: var(--text-2);
+        padding: 10px 14px;
+        background: var(--bg-0);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+      }
+      .arch-note .item b {
+        color: var(--accent);
+      }
+
+      /* ================== Demo ================== */
+      .demo-video {
+        position: relative;
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--bg-1);
+        aspect-ratio: 16 / 9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-glow);
+      }
+      .demo-video video,
+      .demo-video iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      .demo-placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px;
+        cursor: pointer;
+        background: rgba(10, 10, 10, 0.4);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        z-index: 2;
+        transition: opacity 0.3s ease;
+      }
+      .demo-placeholder:hover .play {
+        transform: scale(1.08);
+        box-shadow: 0 0 60px rgba(237, 255, 0, 0.6);
+      }
+      .demo-placeholder.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .demo-placeholder .play {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--accent-ink);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 22px;
+        box-shadow: 0 0 40px rgba(237, 255, 0, 0.35);
+        animation: pulse 2.6s ease-in-out infinite;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+          box-shadow: 0 0 40px rgba(237, 255, 0, 0.35);
+        }
+        50% {
+          transform: scale(1.05);
+          box-shadow: 0 0 60px rgba(237, 255, 0, 0.55);
+        }
+      }
+      .demo-placeholder h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .demo-placeholder p {
+        color: var(--text-2);
+        font-size: 14px;
+        margin: 0 0 16px;
+      }
+      .demo-placeholder code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        padding: 4px 10px;
+        border-radius: 6px;
+        color: var(--text-2);
+      }
+
+      .demo-scenes {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 24px;
+      }
+      @media (max-width: 720px) {
+        .demo-scenes {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .scene {
+        padding: 16px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+      }
+      .scene .ts {
+        color: var(--accent);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+      .scene h4 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .scene p {
+        color: var(--text-3);
+        font-size: 11px;
+        margin: 0;
+      }
+
+      /* ================== Roadmap ================== */
+      .road-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 840px) {
+        .road-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .road-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        background: var(--bg-1);
+      }
+      .road-card .tag {
+        display: inline-block;
+        padding: 3px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 999px;
+        margin-bottom: 12px;
+        font-family: var(--font-mono);
+      }
+      .tag-soon {
+        background: rgba(237, 255, 0, 0.08);
+        color: var(--accent);
+        border: 1px solid rgba(237, 255, 0, 0.3);
+      }
+      .tag-plan {
+        background: var(--bg-2);
+        color: var(--text-2);
+        border: 1px solid var(--border);
+      }
+      .road-card h3 {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      .road-card p {
+        color: var(--text-2);
+        font-size: 14px;
+        margin: 0;
+      }
+
+      /* ================== CTA ================== */
+      section.cta {
+        padding: 120px 0;
+      }
+      .cta-box {
+        border-radius: var(--radius);
+        padding: 64px 48px;
+        text-align: center;
+        background:
+          radial-gradient(600px circle at 50% 0%, rgba(237, 255, 0, 0.12), transparent 70%),
+          var(--bg-1);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+      }
+      .cta-box h2 {
+        font-size: clamp(32px, 4vw, 48px);
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 16px;
+        letter-spacing: -0.025em;
+      }
+      .cta-box p {
+        color: var(--text-2);
+        font-size: 16px;
+        max-width: 520px;
+        margin: 0 auto 28px;
+      }
+      .cta-box .cta-row {
+        justify-content: center;
+      }
+
+      /* ================== Footer ================== */
+      footer {
+        padding: 40px 0 60px;
+        border-top: 1px solid var(--border);
+        color: var(--text-3);
+        font-size: 13px;
+      }
+      footer .wrap {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      footer .brand {
+        font-size: 13px;
+      }
+
+      /* ================== Reveal ================== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .reveal.on {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .reveal.delay-1 {
+        transition-delay: 0.08s;
+      }
+      .reveal.delay-2 {
+        transition-delay: 0.16s;
+      }
+      .reveal.delay-3 {
+        transition-delay: 0.24s;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ======== Top Nav ======== -->
+    <nav class="top" id="topnav">
+      <div class="wrap">
+        <a class="brand" href="#top">
+          <span class="brand-dot"></span>
+          <span>NotebookLM Omni-Bridge</span>
+        </a>
+        <div class="links">
+          <a href="#pain">問題</a>
+          <a href="#features">功能</a>
+          <a href="#architecture">架構</a>
+          <a href="#demo">Demo</a>
+          <a href="#roadmap">未來</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ======== Hero ======== -->
+    <section class="hero" id="top">
+      <div class="hero-bg">
+        <div class="grid"></div>
+      </div>
+      <div class="wrap hero-inner">
+        <div>
+          <span class="eyebrow reveal">v0.2.0 · Chrome MV3 · 已可用</span>
+          <h1 class="headline reveal delay-1">
+            把整個網路，<br />
+            接進你的<span class="hl">第二大腦</span>。
+          </h1>
+          <p class="sub reveal delay-2">
+            NotebookLM Omni-Bridge 是一個 Chrome 擴充套件。在任何網頁上按一下，
+            內容就送進 Google NotebookLM，並直接與它對話——不用複製、不用貼上、
+            不用切換分頁。
+          </p>
+          <div class="cta-row reveal delay-3">
+            <a class="btn btn-primary" href="#demo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              看 Demo
+            </a>
+            <a class="btn btn-ghost" href="#features">
+              看看做了什麼
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </a>
+          </div>
+          <div class="meta-row reveal delay-3">
+            <span>攝入延遲 <b>&lt; 3s</b></span>
+            <span>後端依賴 <b>0</b></span>
+            <span>支援語言 <b>zh-TW · EN</b></span>
+            <span>WCAG <b>AAA</b></span>
+          </div>
+        </div>
+
+        <div class="reveal delay-2">
+          <div class="mock">
+            <div class="mock-chrome">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="url">chrome-extension://.../sidepanel.html</span>
+            </div>
+            <div class="mock-body">
+              <div class="mock-header">
+                <div class="mock-title">
+                  NotebookLM Omni-Bridge
+                  <small>4 notebooks</small>
+                </div>
+                <span class="badge-pill">● 已登入</span>
+              </div>
+              <div class="mock-select">
+                <div class="sel">
+                  <span>📚 AI 研究筆記</span>
+                  <span class="chev">▾</span>
+                </div>
+              </div>
+              <div class="mock-actions">
+                <div class="mock-btn mock-btn-primary">吸取當前頁面</div>
+                <div class="mock-btn mock-btn-outline" style="flex: 0 0 auto; padding: 9px 14px">URL</div>
+              </div>
+              <div class="mock-drop">拖放檔案至此，或點擊選擇<br /><span style="opacity:0.7;font-size:10px">.txt .md .csv .json .html</span></div>
+              <div class="mock-progress">
+                <div class="dots">
+                  <span class="dot-p"></span>
+                  <span class="dot-p"></span>
+                  <span class="dot-p"></span>
+                  <span class="dot-p off"></span>
+                </div>
+                <div class="label">送入 NotebookLM 處理中…</div>
+                <div class="track"><div class="fill"></div></div>
+              </div>
+              <div class="mock-history">
+                <div class="ttl">最近攝入</div>
+                <div class="row"><span>Attention Is All You Need</span><span>14:22</span></div>
+                <div class="row"><span>The Bitter Lesson — Rich Sutton</span><span>昨天</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Pain ======== -->
+    <section id="pain">
+      <div class="wrap">
+        <span class="eyebrow reveal">為什麼做這個</span>
+        <h2 class="section-title reveal delay-1">
+          NotebookLM 很強，<br />但是把東西「餵進去」一直都很麻煩。
+        </h2>
+        <p class="section-lead reveal delay-2">
+          你熟悉這個動作：看到好文章、複製全文、切到 notebooklm.google.com、
+          找到對應 notebook、貼上、命名、按 insert。每天重複三次，一週就是一小時。
+        </p>
+        <div class="pain-grid">
+          <div class="pain-card reveal delay-1">
+            <div class="num">01</div>
+            <h3>沒有官方 API</h3>
+            <p>
+              NotebookLM 不提供公開 API，第三方工具都卡在「無法自動化攝入」這一步。
+              想批量處理？想用命令列？抱歉，只能手動貼。
+            </p>
+          </div>
+          <div class="pain-card reveal delay-2">
+            <div class="num">02</div>
+            <h3>分頁來回切換</h3>
+            <p>
+              <span class="strike">閱讀 → 複製 → 切分頁 → 選 notebook → 貼上 → 回到原文</span><br />
+              每次打斷閱讀的 flow，一天做幾次就開始嫌麻煩。
+            </p>
+          </div>
+          <div class="pain-card reveal delay-3">
+            <div class="num">03</div>
+            <h3>對話也要再切一次</h3>
+            <p>
+              想問剛剛那篇文章一個問題？還得再切回 NotebookLM 網頁。
+              側邊欄對話的體驗是不存在的。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Features ======== -->
+    <section id="features" style="background: linear-gradient(180deg, var(--bg-0) 0%, rgba(20,20,20,0.6) 100%);">
+      <div class="wrap">
+        <span class="eyebrow reveal">解法</span>
+        <h2 class="section-title reveal delay-1">把整條流程，<br />壓到一次點擊。</h2>
+        <p class="section-lead reveal delay-2">
+          一個擴充套件，直連 Google NotebookLM 內部 RPC。沒有後端伺服器、沒有額外帳號、
+          沒有 OAuth 重新登入——就用你瀏覽器裡現成的 Google session。
+        </p>
+
+        <div class="feat-grid">
+          <div class="feat-card large reveal delay-1">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            </div>
+            <h3>直連 Google RPC，零後端</h3>
+            <p>
+              用瀏覽器 fetch() 直接呼叫 NotebookLM 的 batchexecute endpoint，
+              把 notebooklm-py 的 response parser 整個移植到 TypeScript。
+              認證用現有瀏覽器 cookie，無需伺服器。
+            </p>
+          </div>
+          <div class="feat-card large reveal delay-2">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <h3>一鍵攝入，4 步驟進度條</h3>
+            <p>
+              側邊欄按一下「吸取當前頁面」，Background service worker 抓內容 → 拆分
+              prepare / add_source 兩段 RPC → 即時推送 4 階段進度。支援頁面、URL、檔案拖放。
+            </p>
+          </div>
+
+          <div class="feat-card reveal delay-1">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <h3>內嵌對話</h3>
+            <p>
+              直接在側邊欄或浮動視窗對剛剛送進去的 notebook 提問，
+              回覆用 Markdown + 程式碼區塊渲染。
+            </p>
+          </div>
+          <div class="feat-card reveal delay-2">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"></path><path d="M9 9h6v6H9z"></path></svg>
+            </div>
+            <h3>右鍵選單攝入</h3>
+            <p>
+              選取文字 → 右鍵 → 送到 NotebookLM。搭配 Chrome Notifications
+              回饋狀態，不打斷閱讀流程。
+            </p>
+          </div>
+          <div class="feat-card reveal delay-3">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </div>
+            <h3>來源管理</h3>
+            <p>
+              一個 Modal 就能列出、重新命名、刪除目前 notebook 裡的所有 source，
+              不用再開 NotebookLM 網站。
+            </p>
+          </div>
+
+          <div class="feat-card reveal delay-1">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            </div>
+            <h3>原生 i18n</h3>
+            <p>
+              Chrome <code style="font-family: var(--font-mono); font-size: 12px;">chrome.i18n</code>
+              + typed <code style="font-family: var(--font-mono); font-size: 12px;">t()</code> wrapper，
+              zh-TW / EN 69+ 字串完整翻譯，跟隨瀏覽器語系。
+            </p>
+          </div>
+          <div class="feat-card reveal delay-2">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+            </div>
+            <h3>WCAG AAA 配色</h3>
+            <p>
+              純黑白灰基底 + 單一強調色 <code style="font-family: var(--font-mono); font-size: 12px;">#EDFF00</code>，
+              Light / Dark / System 三模式切換，對比度符合無障礙 AAA 等級。
+            </p>
+          </div>
+          <div class="feat-card reveal delay-3">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18M15 3v18"></path></svg>
+            </div>
+            <h3>MCP 整合</h3>
+            <p>
+              附一個 optional MCP Server，透過 stdio 讓 Claude Desktop 或其他
+              MCP client 直接呼叫 list / ingest / chat / status 四個 tool。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Architecture ======== -->
+    <section id="architecture">
+      <div class="wrap">
+        <span class="eyebrow reveal">架構</span>
+        <h2 class="section-title reveal delay-1">三層，就這樣。</h2>
+        <p class="section-lead reveal delay-2">
+          整套東西沒有祕密，也沒有中介伺服器。擴充套件在瀏覽器裡，
+          帶著你現有的 Google 登入 cookie，直接跟 NotebookLM 講話。
+        </p>
+
+        <div class="arch-wrap reveal delay-1">
+          <div class="arch-diagram">
+            <div class="arch-node primary">
+              <div class="ico">FRONTEND</div>
+              <h4>Chrome Extension</h4>
+              <p>Plasmo · React · MV3</p>
+            </div>
+            <div class="arch-arrow">
+              <b>fetch()</b>
+              credentials:<br />"include"
+            </div>
+            <div class="arch-node">
+              <div class="ico">SERVICE</div>
+              <h4>NotebookLM RPC</h4>
+              <p>batchexecute · Google</p>
+            </div>
+          </div>
+
+          <div class="arch-note">
+            <div class="item">
+              <b>＋0</b> 後端伺服器：就一個擴充套件。
+            </div>
+            <div class="item">
+              <b>＋0</b> 額外登入流程：瀏覽器已登入就能用。
+            </div>
+            <div class="item">
+              <b>＋1</b> optional MCP Server：給 Claude Desktop 用的。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Demo ======== -->
+    <section id="demo" style="background: linear-gradient(180deg, rgba(20,20,20,0.4) 0%, var(--bg-0) 100%);">
+      <div class="wrap">
+        <span class="eyebrow reveal">完整 Demo</span>
+        <h2 class="section-title reveal delay-1">看它怎麼運作。</h2>
+        <p class="section-lead reveal delay-2">
+          完整的使用流程：打開側邊欄 → 攝入當前頁面 → 看進度條 → 跟 Notebook 對話。
+          影片由 Remotion 製作，旁白由 Gemini 3.1 Flash TTS 以逐句情緒標記生成。
+        </p>
+
+        <div class="demo-video reveal delay-1">
+          <video
+            id="demoVideo"
+            controls
+            playsinline
+            preload="metadata"
+            poster="./poster.svg"
+          >
+            <source src="./demo.mp4" type="video/mp4" />
+            您的瀏覽器不支援 HTML5 影片。
+          </video>
+          <div class="demo-placeholder" id="demoPlaceholder" role="button" tabindex="0" aria-label="播放 Demo 影片">
+            <div class="play">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="6 4 20 12 6 20 6 4"></polygon>
+              </svg>
+            </div>
+            <h3>播放 105 秒 Demo</h3>
+            <p>完整流程：痛點 → 攝入 → 對話 → 收尾</p>
+          </div>
+        </div>
+
+        <div class="demo-scenes">
+          <div class="scene reveal delay-1">
+            <div class="ts">0:00 – 0:31</div>
+            <h4>痛點</h4>
+            <p>複製貼上、切分頁、找 Notebook——每天重複三次。</p>
+          </div>
+          <div class="scene reveal delay-2">
+            <div class="ts">0:31 – 0:59</div>
+            <h4>一鍵攝入</h4>
+            <p>側邊欄滑出，按「吸取當前頁面」，4 步驟進度條。</p>
+          </div>
+          <div class="scene reveal delay-3">
+            <div class="ts">0:59 – 1:36</div>
+            <h4>與 Notebook 對話</h4>
+            <p>側邊欄直接問，Markdown 渲染 + 程式碼區塊 + 引用來源。</p>
+          </div>
+          <div class="scene reveal delay-3">
+            <div class="ts">1:36 – 1:45</div>
+            <h4>功能總覽</h4>
+            <p>MCP、i18n、WCAG AAA、來源管理——全部就緒。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Roadmap ======== -->
+    <section id="roadmap">
+      <div class="wrap">
+        <span class="eyebrow reveal">接下來</span>
+        <h2 class="section-title reveal delay-1">已可用，還在進化。</h2>
+        <p class="section-lead reveal delay-2">
+          主功能全部完工、端對端實測通過，接下來是把它送上架、讓更多人用。
+        </p>
+        <div class="road-grid">
+          <div class="road-card reveal delay-1">
+            <span class="tag tag-soon">NEXT</span>
+            <h3>Chrome Web Store 發布</h3>
+            <p>
+              圖示、截圖、說明文案、Privacy policy、審核提交——把它變成
+              "下一個可以裝的擴充套件"。
+            </p>
+          </div>
+          <div class="road-card reveal delay-2">
+            <span class="tag tag-soon">NEXT</span>
+            <h3>CI pipeline</h3>
+            <p>
+              GitHub Actions：typecheck、lint、vitest、pytest、Plasmo build
+              全部自動化，PR 無綠標不合併。
+            </p>
+          </div>
+          <div class="road-card reveal delay-3">
+            <span class="tag tag-plan">PLAN</span>
+            <h3>更精緻的 Icon</h3>
+            <p>
+              目前是自己畫的 SVG 縮放版，接下來找設計師操刀，
+              做一組品牌感強烈的完整視覺。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== CTA ======== -->
+    <section class="cta">
+      <div class="wrap">
+        <div class="cta-box reveal">
+          <h2>做給重度 NotebookLM 使用者的，<br />工具。</h2>
+          <p>
+            如果你每天往 NotebookLM 裡丟東西，你會需要它。如果你還沒用過 NotebookLM，
+            也許這個 demo 會讓你想試一次。
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#demo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              重看 Demo
+            </a>
+            <a class="btn btn-ghost" href="#top">回到頂部 ↑</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Footer ======== -->
+    <footer>
+      <div class="wrap">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <span>NotebookLM Omni-Bridge · v0.2.0</span>
+        </div>
+        <div>
+          Built with Plasmo + React · Demo rendered by Remotion
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Scroll state for nav
+      const nav = document.getElementById("topnav");
+      const onScroll = () => {
+        if (window.scrollY > 20) nav.classList.add("scrolled");
+        else nav.classList.remove("scrolled");
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+
+      // Reveal on scroll
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("on");
+              io.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12 }
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      // Video play wiring
+      const video = document.getElementById("demoVideo");
+      const placeholder = document.getElementById("demoPlaceholder");
+
+      const startPlayback = async () => {
+        try {
+          await video.play();
+        } catch (err) {
+          // Autoplay policy may block; leave placeholder so user can retry
+          console.warn("video.play() failed:", err);
+          placeholder.classList.remove("hidden");
+        }
+      };
+
+      placeholder.addEventListener("click", startPlayback);
+      placeholder.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          startPlayback();
+        }
+      });
+
+      video.addEventListener("play", () => placeholder.classList.add("hidden"));
+      video.addEventListener("pause", () => {
+        if (video.currentTime === 0) placeholder.classList.remove("hidden");
+      });
+      video.addEventListener("ended", () => placeholder.classList.remove("hidden"));
+
+      // If the source fails to load (404), show a clear error in the placeholder
+      const source = video.querySelector("source");
+      source.addEventListener("error", () => {
+        placeholder.innerHTML =
+          '<div style="padding:20px;color:var(--text-2);text-align:center;">' +
+          '<h3 style="color:var(--error-text,#f87171);margin-bottom:8px;">無法載入影片</h3>' +
+          '<p>請確認 <code>docs/landing/demo.mp4</code> 存在。<br>在 <code>video/</code> 目錄執行 <code>npm run render && npm run deploy</code> 即可產生。</p>' +
+          "</div>";
+      });
+    </script>
+  </body>
+</html>
