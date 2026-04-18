@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "plasmo dev",
-    "build": "plasmo build",
+    "build": "plasmo build && cp offscreen.html offscreen.js build/chrome-mv3-prod/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -33,6 +33,8 @@
     "default_locale": "zh_TW",
     "permissions": [
       "storage",
+      "cookies",
+      "offscreen",
       "activeTab",
       "scripting",
       "sidePanel",

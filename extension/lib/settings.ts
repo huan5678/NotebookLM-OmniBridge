@@ -1,6 +1,4 @@
-const DEFAULTS = {
-  apiUrl: "http://localhost:8000",
-}
+const DEFAULTS = {} as const
 
 export type Settings = typeof DEFAULTS
 
@@ -11,9 +9,4 @@ export async function getSettings(): Promise<Settings> {
 
 export async function saveSettings(settings: Partial<Settings>): Promise<void> {
   await chrome.storage.local.set(settings)
-}
-
-export async function getApiUrl(): Promise<string> {
-  const { apiUrl } = await getSettings()
-  return apiUrl
 }

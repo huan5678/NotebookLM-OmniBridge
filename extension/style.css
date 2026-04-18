@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== Theme: Light (default) ===== */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e5e5e5;
+  --bg-input: #ffffff;
+  --border: #d4d4d4;
+  --border-accent: #a3a3a3;
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #737373;
+  --text-disabled: #a3a3a3;
+  --accent: #555d00;
+  --accent-hover: #626b00;
+  --accent-text: #ffffff;
+  --success-bg: #f0fdf4;
+  --success-text: #166534;
+  --error-bg: #fef2f2;
+  --error-text: #dc2626;
+  --warning-bg: #fffbeb;
+  --warning-text: #d97706;
+  --overlay: rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Theme: Dark ===== */
+.dark {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1f1f1f;
+  --bg-input: #171717;
+  --border: #2e2e2e;
+  --border-accent: #525252;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-disabled: #525252;
+  --accent: #EDFF00;
+  --accent-hover: #d4e600;
+  --accent-text: #0a0a0a;
+  --success-bg: #052e16;
+  --success-text: #4ade80;
+  --error-bg: #1f0a0a;
+  --error-text: #f87171;
+  --warning-bg: #1f1503;
+  --warning-text: #fbbf24;
+  --overlay: rgba(0, 0, 0, 0.6);
+}

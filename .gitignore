@@ -29,6 +29,8 @@ core/src/**/*.js
 core/src/**/*.d.ts
 extension/**/*.js
 !extension/tailwind.config.js
+!extension/offscreen.js
+!extension/postcss.config.js
 mcp-server/src/**/*.js
 mcp-server/src/**/*.d.ts
 tests/**/*.js

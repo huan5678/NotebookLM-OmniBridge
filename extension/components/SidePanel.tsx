@@ -5,9 +5,8 @@ import type { Notebook } from "~lib/types"
 import { NotebookSelector } from "./NotebookSelector"
 import { SourceManagerModal } from "./SourceManagerModal"
 import { IngestTab } from "./IngestTab"
-import { ChatTab } from "./ChatTab"
 
-const RETRY_INTERVAL = 10000
+const RETRY_INTERVAL = 30000
 
 const retryBtnStyle: React.CSSProperties = {
   alignSelf: "flex-start",
@@ -21,10 +20,8 @@ const retryBtnStyle: React.CSSProperties = {
 }
 
 export function SidePanel() {
-  const [activeTab, setActiveTab] = useState<"ingest" | "chat">("ingest")
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [currentNotebook, setCurrentNotebook] = useState<string | null>(null)
-  const [connected, setConnected] = useState(false)
   const [authenticated, setAuthenticated] = useState(true)
   const [loading, setLoading] = useState(true)
 
@@ -37,20 +34,21 @@ export function SidePanel() {
         notebooks?: Notebook[]
         message?: string
       }>({ type: "NOTEBOOKLM_STATUS" })
-      setConnected(data.connected)
       setAuthenticated(data.authenticated !== false)
 
-      if (data.connected && data.authenticated !== false) {
+      if (data.authenticated !== false) {
         const nbData = await bgSend<{ notebooks: Notebook[] }>({
           type: "NOTEBOOKLM_LIST",
         })
         setNotebooks(nbData.notebooks ?? [])
         if (nbData.notebooks?.[0] && !currentNotebook) {
-          setCurrentNotebook(nbData.notebooks[0].id)
+          const firstId = nbData.notebooks[0].id
+          setCurrentNotebook(firstId)
+          syncNotebookToStorage(firstId, nbData.notebooks[0].title)
         }
       }
     } catch (err) {
-      setConnected(false)
+      setAuthenticated(false)
     } finally {
       setLoading(false)
     }
@@ -58,26 +56,29 @@ export function SidePanel() {
 
   useEffect(() => {
     loadStatus()
-    // Inject selection watcher into the active tab
     bgSend({ type: "SETUP_SELECTION_WATCHER" }).catch(() => {})
   }, [])
 
-  // Auto-retry when disconnected
   useEffect(() => {
-    if (connected || loading) return
+    if (authenticated || loading) return
     const timer = setInterval(loadStatus, RETRY_INTERVAL)
     return () => clearInterval(timer)
-  }, [connected, loading, loadStatus])
+  }, [authenticated, loading, loadStatus])
 
   const handleSelectNotebook = useCallback((id: string) => {
     setCurrentNotebook(id)
     bgSend({ type: "NOTEBOOKLM_SELECT", notebookId: id }).catch(console.error)
+    const nb = notebooks.find((n) => n.id === id)
+    syncNotebookToStorage(id, nb?.title ?? "")
+  }, [notebooks])
+
+  const openChat = useCallback(() => {
+    chrome.windows.create({ url: "tabs/chat.html", type: "popup", width: 480, height: 600 })
   }, [])
 
-  const tabs = [
-    { id: "ingest" as const, label: t("sidepanel_tab_ingest") },
-    { id: "chat" as const, label: t("sidepanel_tab_chat") },
-  ]
+  const openStudio = useCallback(() => {
+    chrome.windows.create({ url: "tabs/studio.html", type: "popup", width: 520, height: 640 })
+  }, [])
 
   return (
     <div style={{
@@ -104,42 +105,59 @@ export function SidePanel() {
             {loading ? t("sidepanel_loading") : t("sidepanel_notebook_count", String(notebooks.length))}
           </p>
         </div>
-        <span
-          onClick={loadStatus}
-          style={{
-            display: "inline-block",
-            padding: "2px 8px",
-            borderRadius: 12,
-            fontSize: 11,
-            background: connected ? "var(--success-bg)" : "var(--error-bg)",
-            color: connected ? "var(--success-text)" : "var(--error-text)",
-            cursor: "pointer",
-          }}
-          title={t("sidepanel_click_reconnect")}
-        >
-          {connected ? t("sidepanel_connected") : t("sidepanel_disconnected")}
-        </span>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button
+            onClick={openStudio}
+            title={t("studio_title")}
+            style={{
+              padding: "4px 10px",
+              background: "var(--bg-input)",
+              color: "var(--accent)",
+              border: "1px solid var(--accent)",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 500,
+            }}
+          >
+            {t("studio_title")}
+          </button>
+          <button
+            onClick={openChat}
+            title={t("chat_float_title")}
+            style={{
+              padding: "4px 10px",
+              background: "var(--accent)",
+              color: "var(--accent-text)",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 500,
+            }}
+          >
+            {t("chat_float_title")}
+          </button>
+          <span
+            onClick={loadStatus}
+            style={{
+              display: "inline-block",
+              padding: "2px 8px",
+              borderRadius: 12,
+              fontSize: 11,
+              background: authenticated ? "var(--success-bg)" : "var(--error-bg)",
+              color: authenticated ? "var(--success-text)" : "var(--error-text)",
+              cursor: "pointer",
+            }}
+            title={t("sidepanel_click_reconnect")}
+          >
+            {authenticated ? t("sidepanel_connected") : t("sidepanel_disconnected")}
+          </span>
+        </div>
       </div>
 
       {/* Status banners */}
-      {!loading && !connected && (
-        <div style={{
-          padding: "10px 16px",
-          background: "var(--error-bg)",
-          color: "var(--error-text)",
-          fontSize: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}>
-          <span>{t("sidepanel_error_no_backend")}</span>
-          <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>
-            {t("sidepanel_error_backend_cmd")}
-          </span>
-          <button onClick={loadStatus} style={retryBtnStyle}>{t("sidepanel_retry")}</button>
-        </div>
-      )}
-      {!loading && connected && !authenticated && (
+      {!loading && !authenticated && (
         <div style={{
           padding: "10px 16px",
           background: "var(--warning-bg)",
@@ -157,31 +175,8 @@ export function SidePanel() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              flex: 1,
-              padding: 10,
-              background: "transparent",
-              color: activeTab === tab.id ? "var(--accent)" : "var(--text-muted)",
-              border: "none",
-              borderBottom: activeTab === tab.id ? "2px solid var(--accent)" : "2px solid transparent",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: activeTab === tab.id ? 600 : 400,
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, overflow: "hidden", padding: 12, display: "flex", flexDirection: "column" }}>
+      {/* Content — always shows IngestTab */}
+      <div style={{ flex: 1, overflow: "auto", padding: 12, display: "flex", flexDirection: "column" }}>
         <NotebookSelector
           notebooks={notebooks}
           current={currentNotebook}
@@ -193,12 +188,12 @@ export function SidePanel() {
             notebookTitle={notebooks.find((n) => n.id === currentNotebook)?.title ?? ""}
           />
         </NotebookSelector>
-        {activeTab === "ingest" ? (
-          <IngestTab currentNotebook={currentNotebook} />
-        ) : (
-          <ChatTab currentNotebook={currentNotebook} />
-        )}
+        <IngestTab currentNotebook={currentNotebook} />
       </div>
     </div>
   )
+}
+
+function syncNotebookToStorage(id: string, title: string) {
+  chrome.storage.session.set({ currentNotebook: id, currentNotebookTitle: title }).catch(() => {})
 }

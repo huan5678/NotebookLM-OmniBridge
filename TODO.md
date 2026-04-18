@@ -49,6 +49,19 @@
 
 ---
 
+## 已完成 — 架構重構：消除後端依賴
+
+- [x] **方案 C: Extension 直連 Google RPC** (2026-04-15)
+  - [x] 新建 `extension/lib/notebooklm-api.ts` — 直接呼叫 batchexecute RPC
+  - [x] 移植 notebooklm-py 的 response parser 到 TypeScript
+  - [x] 改寫 background/index.ts — 移除 HTTP helpers，改用 NotebookLMApi
+  - [x] 認證改為 browser cookies — 無需 Python、無需 Playwright login
+  - [x] Options 頁面簡化為主題 + 登入狀態檢查
+  - [x] SidePanel 狀態語意從 connected → authenticated
+  - [x] Backend/MCP Server 保留為 optional
+
+---
+
 ## 未來可做
 
 - [ ] 更精緻的 Extension Icon (設計師操刀)
