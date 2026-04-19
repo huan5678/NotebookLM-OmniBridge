@@ -9,6 +9,36 @@ import { NotebookLMApi, AuthError } from "~lib/notebooklm-api"
 const TAG = "[BG]"
 const api = new NotebookLMApi()
 
+function isWebPageTab(tab?: chrome.tabs.Tab | null): tab is chrome.tabs.Tab & { id: number } {
+  if (!tab?.id) return false
+  const url = tab.url ?? tab.pendingUrl ?? ""
+  return !!url && !url.startsWith("chrome://") && !url.startsWith("chrome-extension://") &&
+         !url.startsWith("edge://") && !url.startsWith("about:") && !url.startsWith("devtools://")
+}
+
+/**
+ * Find a tab suitable for content extraction. Priority:
+ * 1. Active tab in the last-focused *normal* browser window
+ * 2. Any active tab across windows that is a regular web page
+ * Skips chrome://, chrome-extension:// (e.g. side panel hosts, popup windows)
+ */
+async function findWebPageTab(): Promise<chrome.tabs.Tab | null> {
+  try {
+    const lastFocused = await chrome.windows.getLastFocused({
+      populate: true,
+      windowTypes: ["normal"],
+    })
+    const activeInLF = lastFocused?.tabs?.find((t) => t.active)
+    if (isWebPageTab(activeInLF)) return activeInLF
+  } catch {}
+  try {
+    const allActive = await chrome.tabs.query({ active: true })
+    const webTab = allActive.find(isWebPageTab)
+    if (webTab) return webTab
+  } catch {}
+  return null
+}
+
 function pushProgress(step: number, label: string, done: boolean, error?: string): void {
   const msg: IngestProgressMessage = {
     type: "NOTEBOOKLM_INGEST_PROGRESS",
@@ -70,11 +100,10 @@ chrome.runtime.onMessage.addListener(
           }
 
           case "SETUP_SELECTION_WATCHER": {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-            const tabUrl = tabs[0]?.url ?? ""
-            if (tabs[0]?.id && !tabUrl.startsWith("chrome://") && !tabUrl.startsWith("chrome-extension://")) {
+            const tab = await findWebPageTab()
+            if (tab?.id) {
               await chrome.scripting.executeScript({
-                target: { tabId: tabs[0].id },
+                target: { tabId: tab.id },
                 func: () => {
                   if ((window as any).__omniBridgeWatcher) return
                   ;(window as any).__omniBridgeWatcher = true
@@ -91,12 +120,13 @@ chrome.runtime.onMessage.addListener(
           }
 
           case "ABSORB_PAGE": {
-            const tabs = await chrome.tabs.query({
-              active: true,
-              currentWindow: true,
-            })
-            if (!tabs[0]?.id) throw new Error(chrome.i18n.getMessage("bg_no_tab") || "找不到當前標籤頁")
-            const tabId = tabs[0].id
+            // Prefer the last-focused normal window so capturing works even when
+            // Studio/Editor/Chat popup windows are the currently-focused window.
+            let targetTab = await findWebPageTab()
+            if (!targetTab?.id) {
+              throw new Error(chrome.i18n.getMessage("bg_no_tab") || "找不到當前標籤頁")
+            }
+            const tabId = targetTab.id
             const [result] = await chrome.scripting.executeScript({
               target: { tabId },
               func: () => {
@@ -566,6 +596,10 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== "send-to-notebooklm" || !tab?.id) return
+  if (!isWebPageTab(tab)) {
+    console.warn(TAG, "Context menu ignored on non-web page:", tab.url)
+    return
+  }
 
   try {
     const [result] = await chrome.scripting.executeScript({

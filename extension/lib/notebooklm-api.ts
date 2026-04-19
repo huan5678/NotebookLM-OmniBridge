@@ -46,6 +46,62 @@ export const ArtifactTypeCode = {
   DATA_TABLE: 9,
 } as const
 
+// --- Artifact option enums (ported from notebooklm-py rpc/types.py) ---
+
+export const AudioFormat = {
+  DEEP_DIVE: 1, BRIEF: 2, CRITIQUE: 3, DEBATE: 4,
+} as const
+
+export const AudioLength = {
+  SHORT: 1, DEFAULT: 2, LONG: 3,
+} as const
+
+export const VideoFormat = {
+  EXPLAINER: 1, BRIEF: 2, CINEMATIC: 3,
+} as const
+
+export const VideoStyle = {
+  AUTO_SELECT: 1, CUSTOM: 2, CLASSIC: 3, WHITEBOARD: 4,
+  KAWAII: 5, ANIME: 6, WATERCOLOR: 7, RETRO_PRINT: 8,
+  HERITAGE: 9, PAPER_CRAFT: 10,
+} as const
+
+export const QuizQuantity = {
+  FEWER: 1, STANDARD: 2,
+} as const
+
+export const QuizDifficulty = {
+  EASY: 1, MEDIUM: 2, HARD: 3,
+} as const
+
+export const InfographicOrientation = {
+  LANDSCAPE: 1, PORTRAIT: 2, SQUARE: 3,
+} as const
+
+export const InfographicDetail = {
+  CONCISE: 1, STANDARD: 2, DETAILED: 3,
+} as const
+
+export const InfographicStyle = {
+  AUTO_SELECT: 1, SKETCH_NOTE: 2, PROFESSIONAL: 3, BENTO_GRID: 4,
+  EDITORIAL: 5, INSTRUCTIONAL: 6, BRICKS: 7, CLAY: 8,
+  ANIME: 9, KAWAII: 10, SCIENTIFIC: 11,
+} as const
+
+export const SlideDeckFormat = {
+  DETAILED_DECK: 1, PRESENTER_SLIDES: 2,
+} as const
+
+export const SlideDeckLength = {
+  DEFAULT: 1, SHORT: 2,
+} as const
+
+// Report format: uses numeric code internally (our own convention);
+// maps to title/description/prompt config inside generateArtifact.
+export const ReportFormatCode = {
+  BRIEFING_DOC: 1, STUDY_GUIDE: 2, BLOG_POST: 3, CUSTOM: 4,
+} as const
+
 export interface ArtifactInfo {
   id: string
   title: string
@@ -53,6 +109,12 @@ export interface ArtifactInfo {
   kind: string
   status: string // "in_progress" | "completed" | "failed" | "pending"
   createdAt?: string
+  // Preview/download (extracted at parse time from raw list data)
+  mediaUrl?: string // Audio (MP4), Video (MP4), Infographic (PNG)
+  slidePdfUrl?: string
+  slidePptxUrl?: string
+  reportMarkdown?: string
+  dataTable?: { headers: string[]; rows: string[][] }
 }
 
 export interface GenerationResult {
@@ -626,15 +688,28 @@ export class NotebookLMApi {
 
   async generateArtifact(
     notebookId: string,
-    type: "audio" | "report" | "quiz" | "flashcards" | "mind_map" | "video",
+    type: "audio" | "report" | "quiz" | "flashcards" | "mind_map" | "video" | "infographic" | "slide_deck" | "data_table",
     options?: {
       instructions?: string
       language?: string
-      reportFormat?: number // 1=briefing, 2=study_guide, 3=blog, 4=white_paper
-      quizQuantity?: number
-      quizDifficulty?: number
-      audioFormat?: number
-      audioLength?: number
+      // Audio
+      audioFormat?: number // AudioFormat enum: 1=deep_dive, 2=brief, 3=critique, 4=debate
+      audioLength?: number // AudioLength enum: 1=short, 2=default, 3=long
+      // Video
+      videoFormat?: number // VideoFormat enum: 1=explainer, 2=brief, 3=cinematic
+      videoStyle?: number // VideoStyle enum: 1=auto, 3=classic, ... 10=paper_craft
+      // Report
+      reportFormat?: number // ReportFormatCode: 1=briefing, 2=study_guide, 3=blog_post, 4=custom
+      // Quiz & Flashcards
+      quizQuantity?: number // QuizQuantity: 1=fewer, 2=standard
+      quizDifficulty?: number // QuizDifficulty: 1=easy, 2=medium, 3=hard
+      // Infographic
+      orientation?: number // InfographicOrientation: 1=landscape, 2=portrait, 3=square
+      detailLevel?: number // InfographicDetail: 1=concise, 2=standard, 3=detailed
+      style?: number // InfographicStyle: 1=auto ... 11=scientific
+      // Slide deck
+      slideFormat?: number // SlideDeckFormat: 1=detailed, 2=presenter
+      slideLength?: number // SlideDeckLength: 1=default, 2=short
     },
   ): Promise<GenerationResult> {
     const { sources } = await this.getNotebook(notebookId)
@@ -644,74 +719,167 @@ export class NotebookLMApi {
     const lang = options?.language ?? "en"
     const instr = options?.instructions ?? null
 
+    // Rich first-arg envelope matching real NotebookLM web UI traffic (2026-04).
+    // Required for new artifact types (infographic/slide_deck/data_table); harmless for others.
+    const ENVELOPE_RICH = [2, null, null, [1, null, null, null, null, null, null, null, null, null, [1]], [[1, 4, 2, 3, 6, 5]]]
+    const ENVELOPE_SIMPLE = [2]
+
     let artifactParams: any[]
 
     switch (type) {
+      // Audio Overview — params from notebooklm-py generate_audio
       case "audio":
         artifactParams = [
-          [2], notebookId,
-          [null, null, ArtifactTypeCode.AUDIO, sourceTriple, null, null,
-            [null, [instr, options?.audioLength ?? null, null, sourceDouble, lang, null, options?.audioFormat ?? null]]],
+          ENVELOPE_SIMPLE, notebookId,
+          [
+            null, null, ArtifactTypeCode.AUDIO, sourceTriple,
+            null, null,
+            [null, [instr, options?.audioLength ?? null, null, sourceDouble, lang, null, options?.audioFormat ?? null]],
+          ],
         ]
         break
 
+      // Video Overview — params from notebooklm-py generate_video (now includes format + style)
+      case "video":
+        artifactParams = [
+          ENVELOPE_SIMPLE, notebookId,
+          [
+            null, null, ArtifactTypeCode.VIDEO, sourceTriple,
+            null, null, null, null,
+            [null, null, [sourceDouble, lang, instr, null, options?.videoFormat ?? null, options?.videoStyle ?? null]],
+          ],
+        ]
+        break
+
+      // Report — 4 built-in formats + custom, with append-mode for instructions
       case "report": {
         const fmt = options?.reportFormat ?? 1
         const reportConfigs: Record<number, { title: string; desc: string; prompt: string }> = {
-          1: { title: "Briefing Doc", desc: "A comprehensive overview", prompt: "Create a comprehensive briefing document" },
-          2: { title: "Study Guide", desc: "A study guide", prompt: "Create a study guide with key concepts and review questions" },
-          3: { title: "Blog Post", desc: "A blog post", prompt: "Write an engaging blog post" },
-          4: { title: "White Paper", desc: "A white paper", prompt: "Write a detailed white paper" },
+          1: {
+            title: "Briefing Doc",
+            desc: "Key insights and important quotes",
+            prompt: "Create a comprehensive briefing document that includes an Executive Summary, detailed analysis of key themes, important quotes with context, and actionable insights.",
+          },
+          2: {
+            title: "Study Guide",
+            desc: "Short-answer quiz, essay questions, glossary",
+            prompt: "Create a comprehensive study guide that includes key concepts, short-answer practice questions, essay prompts for deeper exploration, and a glossary of important terms.",
+          },
+          3: {
+            title: "Blog Post",
+            desc: "Insightful takeaways in readable article format",
+            prompt: "Write an engaging blog post that presents the key insights in an accessible, reader-friendly format. Include an attention-grabbing introduction, well-organized sections, and a compelling conclusion with takeaways.",
+          },
+          4: {
+            title: "Custom Report",
+            desc: "Custom format",
+            prompt: "Create a report based on the provided sources.",
+          },
         }
         const cfg = reportConfigs[fmt] ?? reportConfigs[1]
-        const prompt = instr ?? cfg.prompt
+        // For built-in formats (1-3), append instructions to template.
+        // For custom format (4), instructions *replace* the prompt entirely.
+        let prompt = cfg.prompt
+        if (instr) {
+          prompt = fmt === 4 ? instr : `${cfg.prompt}\n\n${instr}`
+        }
         artifactParams = [
-          [2], notebookId,
-          [null, null, ArtifactTypeCode.REPORT, sourceTriple, null, null, null,
-            [null, [cfg.title, cfg.desc, null, sourceDouble, lang, prompt, null, true]]],
+          ENVELOPE_SIMPLE, notebookId,
+          [
+            null, null, ArtifactTypeCode.REPORT, sourceTriple,
+            null, null, null,
+            [null, [cfg.title, cfg.desc, null, sourceDouble, lang, prompt, null, true]],
+          ],
         ]
         break
       }
 
+      // Quiz — variant 2 of type 4
       case "quiz":
         artifactParams = [
-          [2], notebookId,
-          [null, null, ArtifactTypeCode.QUIZ, sourceTriple, null, null, null, null, null,
-            [null, [2, null, instr, null, null, null, null, [options?.quizQuantity ?? null, options?.quizDifficulty ?? null]]]],
+          ENVELOPE_SIMPLE, notebookId,
+          [
+            null, null, ArtifactTypeCode.QUIZ, sourceTriple,
+            null, null, null, null, null,
+            [null, [2, null, instr, null, null, null, null, [options?.quizQuantity ?? null, options?.quizDifficulty ?? null]]],
+          ],
         ]
         break
 
+      // Flashcards — variant 1 of type 4; difficulty/quantity order flipped
       case "flashcards":
         artifactParams = [
-          [2], notebookId,
-          [null, null, ArtifactTypeCode.QUIZ, sourceTriple, null, null, null, null, null,
-            [null, [1, null, instr, null, null, null, [options?.quizDifficulty ?? null, options?.quizQuantity ?? null]]]],
+          ENVELOPE_SIMPLE, notebookId,
+          [
+            null, null, ArtifactTypeCode.QUIZ, sourceTriple,
+            null, null, null, null, null,
+            [null, [1, null, instr, null, null, null, [options?.quizDifficulty ?? null, options?.quizQuantity ?? null]]],
+          ],
         ]
         break
 
+      // Mind Map — minimal form (works against current API despite notebooklm-py
+      // using a different RPC GENERATE_MIND_MAP). Revisit if server rejects.
       case "mind_map":
         artifactParams = [
-          [2], notebookId,
+          ENVELOPE_SIMPLE, notebookId,
           [null, null, ArtifactTypeCode.MIND_MAP, sourceTriple],
         ]
         break
 
-      case "video":
+      // Infographic — uses rich envelope + 11 nulls → options at [15].
+      // Reverse-engineered from captured NotebookLM traffic (2026-04).
+      case "infographic": {
+        const optsBundle = [[instr, lang, null, options?.orientation ?? null, options?.detailLevel ?? null, options?.style ?? null]]
         artifactParams = [
-          [2], notebookId,
-          [null, null, ArtifactTypeCode.VIDEO, sourceTriple, null, null, null, null,
-            [null, null, [sourceDouble, lang, instr]]],
+          ENVELOPE_RICH, notebookId,
+          [
+            null, null, ArtifactTypeCode.INFOGRAPHIC, sourceTriple,
+            null, null, null, null, null, null, null, null, null, null, null, // 11 nulls (indices 4-14)
+            optsBundle, // index 15
+          ],
         ]
         break
+      }
+
+      // Slide Deck — envelope + 13 nulls → options at [17] per notebooklm-py.
+      case "slide_deck": {
+        const optsBundle = [[instr, lang, options?.slideFormat ?? null, options?.slideLength ?? null]]
+        artifactParams = [
+          ENVELOPE_RICH, notebookId,
+          [
+            null, null, ArtifactTypeCode.SLIDE_DECK, sourceTriple,
+            null, null, null, null, null, null, null, null, null, null, null, null, null, // 13 nulls (indices 4-16)
+            optsBundle, // index 17
+          ],
+        ]
+        break
+      }
+
+      // Data Table — envelope + 15 nulls → options at [19] per notebooklm-py.
+      case "data_table": {
+        const optsBundle = [null, [instr, lang]]
+        artifactParams = [
+          ENVELOPE_RICH, notebookId,
+          [
+            null, null, ArtifactTypeCode.DATA_TABLE, sourceTriple,
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, // 15 nulls (indices 4-18)
+            optsBundle, // index 19
+          ],
+        ]
+        break
+      }
 
       default:
         throw new Error(`Unknown artifact type: ${type}`)
     }
 
     try {
+      console.log(`[NLM-API] generateArtifact(${type}) params:`, JSON.stringify(artifactParams).slice(0, 500))
       const result = await this.batchExecute(
         RPC.CREATE_ARTIFACT, artifactParams, `/notebook/${notebookId}`,
       )
+      console.log(`[NLM-API] generateArtifact(${type}) result:`, JSON.stringify(result).slice(0, 500))
       // Parse result for artifact ID
       let artifactId = ""
       if (Array.isArray(result) && result[0]) {
@@ -719,6 +887,7 @@ export class NotebookLMApi {
       }
       return { success: true, artifactId }
     } catch (err) {
+      console.error(`[NLM-API] generateArtifact(${type}) failed:`, err)
       return { success: false, error: String(err) }
     }
   }
@@ -755,7 +924,7 @@ function parseArtifact(data: any[]): ArtifactInfo {
     try { createdAt = new Date(data[15][0] * 1000).toISOString() } catch {}
   }
 
-  return {
+  const info: ArtifactInfo = {
     id: String(id),
     title: String(title),
     type: typeCode,
@@ -763,6 +932,135 @@ function parseArtifact(data: any[]): ArtifactInfo {
     status: ARTIFACT_STATUS_NAMES[statusCode] ?? "unknown",
     createdAt,
   }
+
+  // Only extract media/content when status is completed
+  if (info.status !== "completed") return info
+
+  try {
+    if (typeCode === ArtifactTypeCode.AUDIO) {
+      info.mediaUrl = extractAudioUrl(data) ?? undefined
+    } else if (typeCode === ArtifactTypeCode.VIDEO) {
+      info.mediaUrl = extractVideoUrl(data) ?? undefined
+    } else if (typeCode === ArtifactTypeCode.INFOGRAPHIC) {
+      info.mediaUrl = extractInfographicUrl(data) ?? undefined
+    } else if (typeCode === ArtifactTypeCode.SLIDE_DECK) {
+      const slide = extractSlideDeckUrls(data)
+      info.slidePdfUrl = slide?.pdf
+      info.slidePptxUrl = slide?.pptx
+    } else if (typeCode === ArtifactTypeCode.REPORT) {
+      info.reportMarkdown = extractReportMarkdown(data) ?? undefined
+    } else if (typeCode === ArtifactTypeCode.DATA_TABLE) {
+      info.dataTable = extractDataTable(data) ?? undefined
+    }
+  } catch (e) {
+    console.warn(`[NLM-API] Failed to extract preview data for ${kind}:`, e)
+  }
+
+  return info
+}
+
+// --- Per-type extractors (ported from notebooklm-py download_*) ---
+
+function isMediaUrl(url: any): boolean {
+  return typeof url === "string" && /^https?:\/\//.test(url)
+}
+
+// Audio URL lives at data[6][5][i] — prefer audio/mp4
+function extractAudioUrl(data: any[]): string | null {
+  const metadata = data[6]
+  if (!Array.isArray(metadata) || metadata.length <= 5) return null
+  const mediaList = metadata[5]
+  if (!Array.isArray(mediaList)) return null
+  for (const item of mediaList) {
+    if (Array.isArray(item) && item.length > 2 && item[2] === "audio/mp4" && isMediaUrl(item[0])) {
+      return item[0]
+    }
+  }
+  const first = mediaList[0]
+  if (Array.isArray(first) && isMediaUrl(first[0])) return first[0]
+  return null
+}
+
+// Video URL at data[8] — nested search for video/mp4
+function extractVideoUrl(data: any[]): string | null {
+  const metadata = data[8]
+  if (!Array.isArray(metadata)) return null
+  let mediaList: any[] | null = null
+  for (const item of metadata) {
+    if (Array.isArray(item) && item.length > 0 && Array.isArray(item[0]) && isMediaUrl(item[0][0])) {
+      mediaList = item
+      break
+    }
+  }
+  if (!mediaList) return null
+  let url: string | null = null
+  for (const item of mediaList) {
+    if (Array.isArray(item) && item.length > 2 && item[2] === "video/mp4" && isMediaUrl(item[0])) {
+      url = item[0]
+      if (item[1] === 4) break
+    }
+  }
+  if (!url && Array.isArray(mediaList[0]) && isMediaUrl(mediaList[0][0])) url = mediaList[0][0]
+  return url
+}
+
+// Infographic PNG URL — deeply nested; iterate forward
+function extractInfographicUrl(data: any[]): string | null {
+  for (const item of data) {
+    if (!Array.isArray(item) || item.length <= 2) continue
+    const content = item[2]
+    if (!Array.isArray(content) || content.length === 0) continue
+    const first = content[0]
+    if (!Array.isArray(first) || first.length <= 1) continue
+    const img = first[1]
+    if (Array.isArray(img) && img.length > 0 && isMediaUrl(img[0])) return img[0]
+  }
+  return null
+}
+
+// Slide Deck — metadata at [16] = [config, title, slides, pdf_url, pptx_url]
+function extractSlideDeckUrls(data: any[]): { pdf?: string; pptx?: string } | null {
+  const metadata = data[16]
+  if (!Array.isArray(metadata)) return null
+  const pdf = isMediaUrl(metadata[3]) ? metadata[3] : undefined
+  const pptx = isMediaUrl(metadata[4]) ? metadata[4] : undefined
+  return { pdf, pptx }
+}
+
+// Report markdown string at data[7][0]
+function extractReportMarkdown(data: any[]): string | null {
+  const wrapper = data[7]
+  if (Array.isArray(wrapper) && typeof wrapper[0] === "string") return wrapper[0]
+  if (typeof wrapper === "string") return wrapper
+  return null
+}
+
+// Data Table structured at data[18]
+function extractDataTable(data: any[]): { headers: string[]; rows: string[][] } | null {
+  const raw = data[18]
+  if (!Array.isArray(raw)) return null
+  // Heuristic: find headers (array of strings) and rows (array of string arrays)
+  // Structure observed in notebooklm-py is nested; try common shapes
+  try {
+    // Shape A: [[[headers], [row1], [row2], ...]]
+    // Shape B: [headers, [row1, row2, ...]]
+    let table: any = raw
+    while (Array.isArray(table) && table.length === 1 && Array.isArray(table[0])) {
+      table = table[0]
+    }
+    if (Array.isArray(table) && table.length >= 1 && Array.isArray(table[0])) {
+      const headers = table[0].filter((x: any) => typeof x === "string")
+      const rows: string[][] = []
+      for (let i = 1; i < table.length; i++) {
+        const r = table[i]
+        if (Array.isArray(r)) {
+          rows.push(r.map((c: any) => (c == null ? "" : String(c))))
+        }
+      }
+      if (headers.length) return { headers, rows }
+    }
+  } catch {}
+  return null
 }
 
 function extractSourceId(result: any): string | null {
